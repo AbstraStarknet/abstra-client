@@ -1,48 +1,51 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import React, { ReactNode } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
-import { theme } from '../constants/theme';
+import React from 'react';
+import { StyleSheet, View, ViewProps } from 'react-native';
 
-interface CardProps {
-  children: ReactNode;
-}
+interface CardProps extends ViewProps {}
 
-const Card: React.FC<CardProps> = ({ children }) => {
-  return (
-    <View style={styles.card}>
-      <LinearGradient
-        colors={theme.gradients.topBar as [string, string]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.topBar}
-      />
-      <View style={styles.content}>
-        {children}
-      </View>
-    </View>
-  );
-};
+export const Card = React.forwardRef<View, CardProps>(({ style, ...props }, ref) => (
+  <View ref={ref} style={[styles.card, style]} {...props} />
+));
+
+export const CardHeader = ({ style, ...props }: ViewProps) => (
+  <View style={[styles.header, style]} {...props} />
+);
+
+export const CardTitle = ({ style, ...props }: ViewProps) => (
+  <View style={[styles.title, style]} {...props} />
+);
+
+export const CardContent = ({ style, ...props }: ViewProps) => (
+  <View style={[styles.content, style]} {...props} />
+);
+
+export const CardFooter = ({ style, ...props }: ViewProps) => (
+  <View style={[styles.footer, style]} {...props} />
+);
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: theme.colors.cardBackground,
     borderRadius: 16,
-    overflow: 'hidden',
-    width: Dimensions.get('window').width * 0.9,
-    alignSelf: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  topBar: {
-    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
     width: '100%',
+    maxWidth: 400,
+  },
+  header: {
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  title: {
+    marginBottom: 8,
+    alignItems: 'center',
   },
   content: {
-    padding: 20,
+    gap: 12,
+  },
+  footer: {
+    marginTop: 16,
     alignItems: 'center',
   },
 });
-
-export default Card;
