@@ -1,3 +1,4 @@
+// context/AuthContext.tsx
 import { CavosWallet } from 'cavos-service-native';
 import * as SecureStore from 'expo-secure-store';
 import React, {
@@ -9,13 +10,9 @@ import React, {
 } from 'react';
 
 interface AuthContextProps {
-  /** Instancia activa de CavosWallet (o null) */
   wallet: CavosWallet | null;
-  /** Setter para actualizar el wallet (p. ej. tras login) */
   setWallet: (wallet: CavosWallet | null) => void;
-  /** Indica si estamos restaurando el wallet desde storage */
   loading: boolean;
-  /** Cierra sesión y elimina el wallet */
   logout: () => Promise<void>;
 }
 
@@ -26,20 +23,41 @@ export const AuthContext = createContext<AuthContextProps>({
   logout: async () => {},
 });
 
+type WalletState = {
+  address: string;
+  network: string;
+  email: string;
+  user_id: string;
+  org_id: string;
+  orgSecret: string;
+  accessToken: string;
+  refreshToken: string;
+};
+
 type AuthProviderProps = { children: ReactNode };
 
 export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const [wallet, setWallet] = useState<CavosWallet | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Al montar, intentamos restaurar el wallet de SecureStore
+  // Restaurar de storage
   useEffect(() => {
     (async () => {
       try {
         const data = await SecureStore.getItemAsync('cavos_wallet');
         if (data) {
-          const json = JSON.parse(data);
-          const restored = CavosWallet.fromJSON(json);
+          const json = JSON.parse(data) as WalletState;
+          // Reconstruir instancia
+          const restored = new CavosWallet(
+            json.address,
+            json.network,
+            json.email,
+            json.user_id,
+            json.org_id,
+            json.orgSecret,
+            json.accessToken,
+            json.refreshToken
+          );
           setWallet(restored);
         }
       } catch (e) {
@@ -50,12 +68,22 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     })();
   }, []);
 
-  // Cada vez que cambie wallet (p. ej. tras login), lo persistimos
+  // Persistir cada vez que cambie
   useEffect(() => {
     (async () => {
       if (wallet) {
-        const json = JSON.stringify(wallet.toJSON());
-        await SecureStore.setItemAsync('cavos_wallet', json);
+        const state: WalletState = {
+          address: wallet.getWalletInfo().address,
+          network: wallet.getWalletInfo().network,
+          email: wallet.getWalletInfo().email,
+          user_id: wallet.getWalletInfo().user_id,
+          org_id: wallet.getWalletInfo().org_id,
+          // TODO orgSecret de nuestra instancia
+          orgSecret: (wallet as any).orgSecret,
+          accessToken: (wallet as any).accessToken,
+          refreshToken: (wallet as any).refreshToken,
+        };
+        await SecureStore.setItemAsync('cavos_wallet', JSON.stringify(state));
       }
     })();
   }, [wallet]);

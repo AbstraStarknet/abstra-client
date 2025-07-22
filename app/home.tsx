@@ -1,68 +1,143 @@
+import { Card, CardContent, CardHeader } from '@/components/Card';
+import { useCavos } from '@/hooks/useCavos';
+import { CavosWallet } from 'cavos-service-native';
 import { useRouter } from 'expo-router';
-import { LogOut, User } from 'lucide-react-native';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { LogOut } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { wallet, logout } = useCavos();
+  const [info, setInfo] = useState<ReturnType<CavosWallet['getWalletInfo']> | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleLogout = () => {
-    router.replace('/login'); // Simula cierre de sesión
+  useEffect(() => {
+    if (!wallet) {
+      router.replace('/login');
+      return;
+    }
+    const wlInfo = wallet.getWalletInfo();
+    setInfo(wlInfo);
+    setLoading(false);
+  }, [wallet]);
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/login');
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loader}>
+        <ActivityIndicator size="large" color="#fff" />
+      </SafeAreaView>
+    );
+  }
+  if (!info) return null;
+
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <User size={40} color="#fff" />
-        <Text style={styles.title}>Bienvenido a Abstra</Text>
-        <Text style={styles.subtitle}>Tu wallet digital segura y fácil de usar</Text>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <LogOut color="#000" size={18} />
-          <Text style={styles.logoutText}>Cerrar sesión</Text>
+    <SafeAreaView style={styles.safe}>
+      {/* Header con logout alineado a la derecha */}
+      <View style={styles.headerContainer}>
+        <TouchableOpacity onPress={handleLogout} hitSlop={8}>
+          <LogOut color="#fff" size={24} />
         </TouchableOpacity>
       </View>
-    </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Card style={styles.card}>
+          <CardHeader style={styles.header}>
+            <Text style={styles.greeting}>
+              Hola, {info.email.split('@')[0]}
+            </Text>
+            <Text style={styles.subGreeting}>
+              Bienvenido a Abstra
+            </Text>
+          </CardHeader>
+
+          <CardContent style={styles.content}>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Dirección:</Text>
+              <Text style={styles.value}>{info.address}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Red:</Text>
+              <Text style={styles.value}>{info.network}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Email:</Text>
+              <Text style={styles.value}>{info.email}</Text>
+            </View>
+          </CardContent>
+        </Card>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safe: {
+    flex: 1,
+    backgroundColor: '#0f0f0f',
+  },
+  loader: {
     flex: 1,
     backgroundColor: '#0f0f0f',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  headerContainer: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  scrollContent: {
+    flexGrow: 1,
     padding: 24,
+    justifyContent: 'center',
   },
   card: {
-    width: '100%',
-    maxWidth: 360,
     backgroundColor: '#1e1e1e',
     borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    gap: 12,
+    padding: 20,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
+  header: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  greeting: {
     color: '#fff',
+    fontSize: 24,
+    fontWeight: '700',
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#aaa',
-    textAlign: 'center',
+  subGreeting: {
+    color: '#ccc',
+    fontSize: 16,
   },
-  logoutButton: {
-    marginTop: 16,
-    backgroundColor: 'white',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  content: {
+    paddingTop: 8,
   },
-  logoutText: {
-    color: '#000',
+  infoRow: {
+    marginBottom: 12,
+  },
+  label: {
+    color: '#888',
+    fontSize: 13,
+    marginBottom: 2,
+  },
+  value: {
+    color: '#fff',
+    fontSize: 15,
     fontWeight: '500',
   },
 });
