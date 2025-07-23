@@ -13,7 +13,7 @@ import {
   Settings,
   User,
 } from 'lucide-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -33,9 +33,9 @@ const { width } = Dimensions.get('window');
 
 type Tx = { id: string; incoming: boolean; label: string; date: string; amount: number; };
 const SAMPLE_TX: Tx[] = [
-  { id: '1', incoming: true,  label: 'Pago recibido',   date: 'Hoy',         amount: 150   },
-  { id: '2', incoming: false, label: 'Compra en línea', date: 'Ayer',        amount: 45.3  },
-  { id: '3', incoming: true,  label: 'Transferencia',   date: 'Hace 2 días', amount: 200   },
+  { id: '1', incoming: true, label: 'Pago recibido', date: 'Hoy', amount: 150 },
+  { id: '2', incoming: false, label: 'Compra en línea', date: 'Ayer', amount: 45.3 },
+  { id: '3', incoming: true, label: 'Transferencia', date: 'Hace 2 días', amount: 200 },
 ];
 
 export default function HomeScreen() {
@@ -156,8 +156,8 @@ export default function HomeScreen() {
           <View style={styles.shortcuts}>
             {[
               { Icon: MessageCircle, label: 'Chat IA' },
-              { Icon: CreditCard,    label: 'Tarjetas' },
-              { Icon: User,          label: 'Mi cuenta' },
+              { Icon: CreditCard, label: 'Tarjetas' },
+              { Icon: User, label: 'Mi cuenta' },
             ].map(({ Icon, label }) => (
               <Pressable
                 key={label}
@@ -168,6 +168,16 @@ export default function HomeScreen() {
                 <Text style={styles.shortcutText}>{label}</Text>
               </Pressable>
             ))}
+
+            {/* API Demo Button */}
+            <Pressable
+              style={styles.shortcutCard}
+              android_ripple={{ color: '#ffffff20' }}
+              onPress={() => router.push('/cavos-demo')}
+            >
+              <Settings color="#fff" size={28} />
+              <Text style={styles.shortcutText}>API Demo</Text>
+            </Pressable>
           </View>
 
           {/* TRANSACTIONS */}
