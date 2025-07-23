@@ -5,12 +5,12 @@ import { useRouter } from 'expo-router';
 import { LogOut } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -57,7 +57,7 @@ export default function HomeScreen() {
         <Card style={styles.card}>
           <CardHeader style={styles.header}>
             <Text style={styles.greeting}>
-              Hola, {info.email.split('@')[0]}
+              Hola, {info.name}
             </Text>
             <Text style={styles.subGreeting}>
               Bienvenido a Abstra
