@@ -2,11 +2,11 @@
 import { CavosWallet } from 'cavos-service-native';
 import * as SecureStore from 'expo-secure-store';
 import React, {
-    createContext,
-    FC,
-    ReactNode,
-    useEffect,
-    useState,
+  createContext,
+  FC,
+  ReactNode,
+  useEffect,
+  useState,
 } from 'react';
 
 interface AuthContextProps {
@@ -27,6 +27,7 @@ type WalletState = {
   address: string;
   network: string;
   email: string;
+  name: string;
   user_id: string;
   org_id: string;
   orgSecret: string;
@@ -40,18 +41,18 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const [wallet, setWallet] = useState<CavosWallet | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Restaurar de storage
   useEffect(() => {
     (async () => {
       try {
         const data = await SecureStore.getItemAsync('cavos_wallet');
         if (data) {
           const json = JSON.parse(data) as WalletState;
-          // Reconstruir instancia
+         
           const restored = new CavosWallet(
             json.address,
             json.network,
             json.email,
+            json.name,
             json.user_id,
             json.org_id,
             json.orgSecret,
@@ -76,6 +77,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
           address: wallet.getWalletInfo().address,
           network: wallet.getWalletInfo().network,
           email: wallet.getWalletInfo().email,
+          name: wallet.getWalletInfo().name,
           user_id: wallet.getWalletInfo().user_id,
           org_id: wallet.getWalletInfo().org_id,
           // TODO orgSecret de nuestra instancia
