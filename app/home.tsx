@@ -11,7 +11,7 @@ import {
   LogOut,
   MessageCircle,
   Settings,
-  TrendingUp,
+  User,
 } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -30,6 +30,7 @@ import {
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
+
 type Tx = { id: string; incoming: boolean; label: string; date: string; amount: number; };
 const SAMPLE_TX: Tx[] = [
   { id: '1', incoming: true,  label: 'Pago recibido',   date: 'Hoy',         amount: 150   },
@@ -71,9 +72,7 @@ export default function HomeScreen() {
     const id = balanceAnim.addListener(({ value }) => {
       setDisplayedBalance(value);
     });
-    return () => {
-      balanceAnim.removeListener(id);
-    };
+    return () => balanceAnim.removeListener(id);
   }, [wallet]);
 
   const handleLogout = async () => {
@@ -104,7 +103,7 @@ export default function HomeScreen() {
         {/* HEADER */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Hola, {userName}</Text>
+            <Text style={styles.greeting}>{userName}</Text>
             <Text style={styles.subGreeting}>Bienvenido de vuelta</Text>
           </View>
           <View style={styles.headerIcons}>
@@ -153,12 +152,12 @@ export default function HomeScreen() {
             </LinearGradient>
           </Animated.View>
 
-          {/* SHORTCUTS */}
+          {/* SHORTCUTS: Chat IA, Tarjetas, Mi cuenta */}
           <View style={styles.shortcuts}>
             {[
               { Icon: MessageCircle, label: 'Chat IA' },
               { Icon: CreditCard,    label: 'Tarjetas' },
-              { Icon: TrendingUp,     label: 'Inversiones' },
+              { Icon: User,          label: 'Mi cuenta' },
             ].map(({ Icon, label }) => (
               <Pressable
                 key={label}
