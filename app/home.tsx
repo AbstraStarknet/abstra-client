@@ -13,25 +13,33 @@ import {
   Settings,
   User,
 } from 'lucide-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Dimensions,
   Easing,
   FlatList,
-  Pressable,
   SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
-type Tx = { id: string; incoming: boolean; label: string; date: string; amount: number; };
+// Configuración de token y endpoints
+const TOKEN_ADDRESS = '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d';
+const DECIMALS      = '18';
+const TO_ADDRESS    = '0x6761e4c92d7e74586563fc763068f5f459d427ddab032c8ffe934cc8ab92a81';
+const TRANSFER_URL  = 'http://192.168.68.88:3000/api/cavos/transfer';
+const BALANCE_URL   = 'http://192.168.68.88:3000/api/cavos/balance';
+
+type Tx = { id: string; incoming: boolean; label: string; date: string; amount: number };
 const SAMPLE_TX: Tx[] = [
   { id: '1', incoming: true,  label: 'Pago recibido',   date: 'Hoy',         amount: 150   },
   { id: '2', incoming: false, label: 'Compra en línea', date: 'Ayer',        amount: 45.3  },
@@ -43,43 +51,98 @@ export default function HomeScreen() {
   const { wallet, logout } = useCavos();
   const [info, setInfo] = useState<ReturnType<CavosWallet['getWalletInfo']> | null>(null);
   const [hideBalance, setHideBalance] = useState(false);
+  const [loadingBalance, setLoadingBalance] = useState(true);
 
   // Animated values & state
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const scaleAnim   = useRef(new Animated.Value(0.8)).current;
   const balanceAnim = useRef(new Animated.Value(0)).current;
   const [displayedBalance, setDisplayedBalance] = useState(0);
 
+  // Función para leer el balance y animarlo
+  const fetchBalance = useCallback(async (address: string) => {
+    setLoadingBalance(true);
+    try {
+      const res = await fetch(BALANCE_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ walletAddress: address, tokenAddress: TOKEN_ADDRESS, decimals: DECIMALS }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const { data } = await res.json();
+      const bal = typeof data.balance === 'object'
+        ? data.balance.balance
+        : Number(data.balance);
+
+      // Animación desde 0 (o valor previo) hasta bal
+      Animated.timing(balanceAnim, {
+        toValue: bal,
+        duration: 1200,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start();
+    } catch (e: any) {
+      console.error('Error fetching balance:', e.message);
+      Alert.alert('Error', 'No se pudo cargar el balance');
+    } finally {
+      setLoadingBalance(false);
+    }
+  }, [balanceAnim]);
+
+  // Efecto al montar: restaurar info y balance
   useEffect(() => {
-    if (!wallet) return router.replace('/login');
-    setInfo(wallet.getWalletInfo());
+    if (!wallet) {
+      router.replace('/login');
+      return;
+    }
+    const wlInfo = wallet.getWalletInfo();
+    setInfo(wlInfo);
 
-    // 1) Animación de escala
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-      friction: 5,
-    }).start();
+    // Escala de entrada
+    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, friction: 5 }).start();
+    const listenerId = balanceAnim.addListener(({ value }) => setDisplayedBalance(value));
 
-    // 2) Animación numérica del balance
-    Animated.timing(balanceAnim, {
-      toValue: 2847.5,
-      duration: 1500,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
+    // Primera carga de balance
+    fetchBalance(wlInfo.address);
 
-    // 3) Listener para actualizar estado
-    const id = balanceAnim.addListener(({ value }) => {
-      setDisplayedBalance(value);
-    });
-    return () => balanceAnim.removeListener(id);
-  }, [wallet]);
+    return () => balanceAnim.removeListener(listenerId);
+  }, [wallet, fetchBalance]);
 
+ 
   const handleLogout = async () => {
     await logout();
     router.replace('/login');
   };
 
+  const doTransfer = async () => {
+    if (!info) return;
+    Alert.alert('Envio', 'Iniciando transferencia...');
+    try {
+      const payload = {
+        network:      'sepolia',
+        fromAddress:  info.address,
+        toAddress:    TO_ADDRESS,
+        tokenAddress: TOKEN_ADDRESS,
+        amount:       1,
+        decimals:     Number(DECIMALS),
+      };
+      const res = await fetch(TRANSFER_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const json = await res.json();
+      console.log('Transfer result:', json.data.transactionResult);
+      Alert.alert('Éxito', 'Transferencia completada');
+      // 👉 Recarga el balance tras la transferencia
+      fetchBalance(info.address);
+    } catch (e: any) {
+      console.error('Error en transferencia:', e.message);
+      Alert.alert('Error', e.message);
+    }
+  };
+
+  // Si no hay info, mostramos loader
   if (!info) {
     return (
       <SafeAreaView style={styles.loader}>
@@ -103,70 +166,75 @@ export default function HomeScreen() {
         {/* HEADER */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>{userName}</Text>
+            <Text style={styles.greeting}>Hola, {userName}</Text>
             <Text style={styles.subGreeting}>Bienvenido de vuelta</Text>
           </View>
           <View style={styles.headerIcons}>
-            <Pressable onPress={handleLogout} style={styles.headerIcon} hitSlop={8}>
+            <TouchableOpacity onPress={handleLogout} style={styles.headerIcon} hitSlop={8}>
               <LogOut color="#fff" size={22} />
-            </Pressable>
-            <Pressable style={styles.headerIcon} hitSlop={8}>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerIcon} hitSlop={8}>
               <Settings color="#fff" size={22} />
-            </Pressable>
+            </TouchableOpacity>
           </View>
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.container}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
           {/* BALANCE CARD */}
           <Animated.View style={[styles.balanceWrapper, { transform: [{ scale: scaleAnim }] }]}>
-            <LinearGradient
-              colors={['#9333ea', '#f97316']}
-              style={styles.balanceGradient}
-            >
+            <LinearGradient colors={['#9333ea', '#f97316']} style={styles.balanceGradient}>
               <BlurView intensity={90} tint="dark" style={styles.balanceCard}>
                 <View style={styles.balanceTop}>
-                  <Text style={styles.balanceTitle}>Saldo Total</Text>
-                  <Pressable onPress={() => setHideBalance(!hideBalance)}>
+                  <Text style={styles.balanceTitle}>Saldo USDC</Text>
+                  <TouchableOpacity onPress={() => setHideBalance(!hideBalance)}>
                     <EyeOff color="rgba(255,255,255,0.7)" size={20} />
-                  </Pressable>
+                  </TouchableOpacity>
                 </View>
-                <Text style={styles.balanceValue}>
-                  {hideBalance
-                    ? '••••••'
-                    : `$${displayedBalance.toFixed(2)}`}
-                </Text>
+
+                {loadingBalance ? (
+                  <ActivityIndicator size="small" color="#fff" style={{ marginVertical: 16 }} />
+                ) : (
+                  <Text style={styles.balanceValue}>
+                    {hideBalance ? '••••••' : `$${displayedBalance.toFixed(2)}`}
+                  </Text>
+                )}
+
                 <View style={styles.actions}>
-                  <Pressable style={styles.circleButton} android_ripple={{ color: '#ffffff20' }}>
+                  <TouchableOpacity
+                    style={[styles.circleButton, styles.sendButton]}
+                    onPress={doTransfer}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
                     <ArrowUpRight color="#fff" size={24} />
                     <Text style={styles.circleLabel}>Send</Text>
-                  </Pressable>
-                  <Pressable style={styles.circleButton} android_ripple={{ color: '#ffffff20' }}>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.circleButton}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
                     <ArrowDownLeft color="#fff" size={24} />
                     <Text style={styles.circleLabel}>Deposit</Text>
-                  </Pressable>
+                  </TouchableOpacity>
                 </View>
               </BlurView>
             </LinearGradient>
           </Animated.View>
 
-          {/* SHORTCUTS: Chat IA, Tarjetas, Mi cuenta */}
+          {/* SHORTCUTS */}
           <View style={styles.shortcuts}>
             {[
               { Icon: MessageCircle, label: 'Chat IA' },
               { Icon: CreditCard,    label: 'Tarjetas' },
               { Icon: User,          label: 'Mi cuenta' },
             ].map(({ Icon, label }) => (
-              <Pressable
+              <TouchableOpacity
                 key={label}
                 style={styles.shortcutCard}
-                android_ripple={{ color: '#ffffff20' }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Icon color="#fff" size={28} />
                 <Text style={styles.shortcutText}>{label}</Text>
-              </Pressable>
+              </TouchableOpacity>
             ))}
           </View>
 
@@ -179,12 +247,7 @@ export default function HomeScreen() {
               scrollEnabled={false}
               renderItem={({ item }) => (
                 <View style={styles.txRow}>
-                  <View
-                    style={[
-                      styles.txIconCircle,
-                      item.incoming ? styles.txIn : styles.txOut,
-                    ]}
-                  >
+                  <View style={[styles.txIconCircle, item.incoming ? styles.txIn : styles.txOut]}>
                     {item.incoming ? (
                       <ArrowDownLeft color="#22c55e" size={18} />
                     ) : (
@@ -218,9 +281,9 @@ const styles = StyleSheet.create({
   background: { flex: 1 },
   loader: {
     flex: 1,
-    backgroundColor: '#0f0f0f',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#0f0f0f',
   },
   header: {
     flexDirection: 'row',
@@ -235,10 +298,7 @@ const styles = StyleSheet.create({
   headerIcon: { marginLeft: 16 },
   container: { padding: 24, paddingBottom: 40 },
   balanceWrapper: { alignItems: 'center', marginBottom: 24 },
-  balanceGradient: {
-    width: width - 48,
-    borderRadius: 24,
-  },
+  balanceGradient: { width: width - 48, borderRadius: 24 },
   balanceCard: {
     padding: 24,
     borderRadius: 20,
@@ -263,10 +323,13 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', justifyContent: 'space-between' },
   circleButton: {
     backgroundColor: 'rgba(255,255,255,0.2)',
-    flex: 0.48,
+    width: '48%',
     alignItems: 'center',
     paddingVertical: 16,
     borderRadius: 16,
+  },
+  sendButton: {
+    backgroundColor: 'rgba(255,255,255,0.3)',
   },
   circleLabel: { color: '#fff', marginTop: 8, fontSize: 14, fontWeight: '700' },
   shortcuts: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
