@@ -225,16 +225,13 @@ export default function HomeScreen() {
 
           {/* SHORTCUTS */}
           <View style={styles.shortcuts}>
-            {[
-              { Icon: MessageCircle, label: 'Chat IA' },
-              { Icon: CreditCard, label: 'Tarjetas' },
-            ].map(({ Icon, label }) => (
+            {shortcuts.map(({ Icon, label, onPress }) => (
               <LinearGradient
                 key={label}
                 colors={['#3B82F6', '#F97316']}
                 style={styles.shortcutGradient}
               >
-                <TouchableOpacity style={styles.shortcutCard}>
+                <TouchableOpacity style={styles.shortcutCard} onPress={onPress}>
                   <Icon color="#fff" size={28} />
                   <Text style={styles.shortcutText}>{label}</Text>
                 </TouchableOpacity>
@@ -293,13 +290,21 @@ export default function HomeScreen() {
             // Agrega tu mensaje
             setChatMsgs(prev => [
               ...prev,
+<<<<<<< HEAD
               { id: Date.now().toString(), fromMe: true, text },
+=======
+              { id: Date.now().toString(), fromMe: true, text }
+>>>>>>> 8abeccd (Changing the order in setChatMsgs props)
             ])
             // Simula respuesta
             setTimeout(() => {
               setChatMsgs(prev => [
                 ...prev,
+<<<<<<< HEAD
                 { id: Date.now().toString() + 'b', fromMe: false, text: `🤖 Bot: ${text}` },
+=======
+                { id: Date.now().toString() + 'b', fromMe: false, text: `🤖 Bot: ${text}` }
+>>>>>>> 8abeccd (Changing the order in setChatMsgs props)
               ])
             }, 600)
           }}
