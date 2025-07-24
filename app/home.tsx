@@ -268,14 +268,14 @@ export default function HomeScreen() {
           onSend={text => {
             // Agrega tu mensaje
             setChatMsgs(prev => [
-              { id: Date.now().toString(), fromMe: true,  text },
               ...prev,
+              { id: Date.now().toString(), fromMe: true,  text },
             ])
             // Simula respuesta
             setTimeout(() => {
               setChatMsgs(prev => [
-                { id: Date.now().toString() + 'b', fromMe: false, text: `🤖 Bot: ${text}` },
                 ...prev,
+                { id: Date.now().toString() + 'b', fromMe: false, text: `🤖 Bot: ${text}` },
               ])
             }, 600)
           }}
