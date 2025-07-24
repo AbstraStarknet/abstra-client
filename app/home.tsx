@@ -290,21 +290,13 @@ export default function HomeScreen() {
             // Agrega tu mensaje
             setChatMsgs(prev => [
               ...prev,
-<<<<<<< HEAD
               { id: Date.now().toString(), fromMe: true, text },
-=======
-              { id: Date.now().toString(), fromMe: true, text }
->>>>>>> 8abeccd (Changing the order in setChatMsgs props)
             ])
             // Simula respuesta
             setTimeout(() => {
               setChatMsgs(prev => [
                 ...prev,
-<<<<<<< HEAD
                 { id: Date.now().toString() + 'b', fromMe: false, text: `🤖 Bot: ${text}` },
-=======
-                { id: Date.now().toString() + 'b', fromMe: false, text: `🤖 Bot: ${text}` }
->>>>>>> 8abeccd (Changing the order in setChatMsgs props)
               ])
             }, 600)
           }}
