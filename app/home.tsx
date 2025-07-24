@@ -1,4 +1,4 @@
-import { ChatModal } from '@/components/chatModal';
+import { ChatModal, ChatMsg } from '@/components/chatModal';
 import { useCavos } from '@/hooks/useCavos';
 import type { CavosWallet } from 'cavos-service-native';
 import { BlurView } from 'expo-blur';
@@ -52,8 +52,13 @@ export default function HomeScreen() {
   const [info, setInfo] = useState<ReturnType<CavosWallet['getWalletInfo']> | null>(null);
   const [hideBalance, setHideBalance] = useState(false);
   const [loadingBalance, setLoadingBalance] = useState(true);
-  const [showChat, setShowChat] = useState(false);
+  const [showChat, setShowChat] = useState(false)
+  const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([])
 
+  const shortcuts = [
+  { Icon: MessageCircle, label: 'Chat IA', onPress: () => setShowChat(true) },
+  { Icon: CreditCard,    label: 'Tarjetas', onPress: () => {/*...*/} },
+  ];
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const balanceAnim = useRef(new Animated.Value(0)).current;
   const [displayedBalance, setDisplayedBalance] = useState(0);
@@ -213,11 +218,13 @@ export default function HomeScreen() {
 
           {/* SHORTCUTS */}
           <View style={styles.shortcuts}>
-            {[ 
-              { Icon: MessageCircle, label: 'Chat IA' },
-              { Icon: CreditCard,    label: 'Tarjetas' },
-            ].map(({ Icon, label }) => (
-              <TouchableOpacity key={label} style={styles.shortcutCard}>
+            {shortcuts.map(({ Icon, label, onPress }) => (
+              <TouchableOpacity
+                key={label}
+                style={styles.shortcutCard}
+                onPress={onPress}
+                hitSlop={8}
+              >
                 <Icon color="#fff" size={28} />
                 <Text style={styles.shortcutText}>{label}</Text>
               </TouchableOpacity>
@@ -257,6 +264,21 @@ export default function HomeScreen() {
          <ChatModal
           visible={showChat}
           onClose={() => setShowChat(false)}
+          messages={chatMsgs}
+          onSend={text => {
+            // Agrega tu mensaje
+            setChatMsgs(prev => [
+              { id: Date.now().toString(), fromMe: true,  text },
+              ...prev,
+            ])
+            // Simula respuesta
+            setTimeout(() => {
+              setChatMsgs(prev => [
+                { id: Date.now().toString() + 'b', fromMe: false, text: `🤖 Bot: ${text}` },
+                ...prev,
+              ])
+            }, 600)
+          }}
         />
       </SafeAreaView>
     </LinearGradient>
