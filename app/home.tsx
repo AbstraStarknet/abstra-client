@@ -1,3 +1,4 @@
+import { ChatModal } from '@/components/chatModal';
 import { useCavos } from '@/hooks/useCavos';
 import type { CavosWallet } from 'cavos-service-native';
 import { BlurView } from 'expo-blur';
@@ -10,8 +11,7 @@ import {
   EyeOff,
   LogOut,
   MessageCircle,
-  Settings,
-  User,
+  Settings
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -52,6 +52,7 @@ export default function HomeScreen() {
   const [info, setInfo] = useState<ReturnType<CavosWallet['getWalletInfo']> | null>(null);
   const [hideBalance, setHideBalance] = useState(false);
   const [loadingBalance, setLoadingBalance] = useState(true);
+  const [showChat, setShowChat] = useState(false);
 
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const balanceAnim = useRef(new Animated.Value(0)).current;
@@ -148,12 +149,10 @@ export default function HomeScreen() {
   const userName = info.name ?? 'Usuario';
 
   return (
-    <LinearGradient
-      colors={['#f97316', '#9333ea']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.fullscreenGradient}
-    >
+      <LinearGradient
+        colors={['#000000', '#000000']}
+        style={styles.fullscreenGradient}
+      >
       {/* superponemos la StatusBar translucida */}
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
@@ -161,7 +160,7 @@ export default function HomeScreen() {
         {/* HEADER */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Hola, {userName}</Text>
+            <Text style={styles.greeting}>Hola, {userName.split(' ')[0]}</Text>
             <Text style={styles.subGreeting}>Bienvenido de vuelta</Text>
           </View>
           <View style={styles.headerIcons}>
@@ -217,7 +216,6 @@ export default function HomeScreen() {
             {[ 
               { Icon: MessageCircle, label: 'Chat IA' },
               { Icon: CreditCard,    label: 'Tarjetas' },
-              { Icon: User,          label: 'Mi cuenta' },
             ].map(({ Icon, label }) => (
               <TouchableOpacity key={label} style={styles.shortcutCard}>
                 <Icon color="#fff" size={28} />
@@ -226,38 +224,40 @@ export default function HomeScreen() {
             ))}
           </View>
 
-          {/* TRANSACTIONS */}
-          <BlurView intensity={60} tint="dark" style={styles.txWrapper}>
-            <Text style={styles.txHeader}>Transacciones Recientes</Text>
-            <FlatList
-              data={SAMPLE_TX}
-              keyExtractor={i => i.id}
-              scrollEnabled={false}
-              renderItem={({ item }) => (
-                <View style={styles.txRow}>
-                  <View style={[
-                    styles.txIconCircle,
-                    item.incoming ? styles.txIn : styles.txOut,
-                  ]}>
-                    {item.incoming
-                      ? <ArrowDownLeft color="#22c55e" size={18}/>
-                      : <ArrowUpRight color="#f87171" size={18}/>}
-                  </View>
-                  <View style={styles.txText}>
-                    <Text style={styles.txLabel}>{item.label}</Text>
-                    <Text style={styles.txDate}>{item.date}</Text>
-                  </View>
-                  <Text style={[
-                    styles.txAmount,
-                    { color: item.incoming ? '#22c55e' : '#f87171' },
-                  ]}>
-                    {item.incoming ? '+' : '-'}${item.amount.toFixed(2)}
-                  </Text>
-                </View>
-              )}
-            />
-          </BlurView>
+          {/* TRANSACTIONS — ahora igual al BALANCE CARD */}
+          <View style={styles.balanceWrapper}>
+            <LinearGradient colors={['#9333ea', '#f97316']} style={styles.balanceGradient}>
+              <BlurView intensity={90} tint="dark" style={styles.balanceCard}>
+                <Text style={styles.txHeader}>Transacciones Recientes</Text>
+                <FlatList
+                  data={SAMPLE_TX}
+                  keyExtractor={item => item.id}
+                  scrollEnabled={false}
+                  renderItem={({ item }) => (
+                    <View style={styles.txRow}>
+                      <View style={[styles.txIconCircle, item.incoming ? styles.txIn : styles.txOut]}>
+                        {item.incoming
+                          ? <ArrowDownLeft color="#22c55e" size={18}/>
+                          : <ArrowUpRight color="#f87171" size={18}/>}
+                      </View>
+                      <View style={styles.txText}>
+                        <Text style={styles.txLabel}>{item.label}</Text>
+                        <Text style={styles.txDate}>{item.date}</Text>
+                      </View>
+                      <Text style={[styles.txAmount, { color: item.incoming ? '#22c55e' : '#f87171' }]}>
+                        {item.incoming ? '+' : '-'}${item.amount.toFixed(2)}
+                      </Text>
+                    </View>
+                  )}
+                />
+              </BlurView>
+            </LinearGradient>
+          </View>
         </ScrollView>
+         <ChatModal
+          visible={showChat}
+          onClose={() => setShowChat(false)}
+        />
       </SafeAreaView>
     </LinearGradient>
   );
