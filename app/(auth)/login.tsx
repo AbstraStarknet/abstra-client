@@ -4,7 +4,6 @@ import { CavosWallet, SignInWithApple, SignInWithGoogle } from 'cavos-service-na
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 export default function LoginScreen() {
@@ -30,16 +29,17 @@ export default function LoginScreen() {
 
   return (
     <LinearGradient
-      colors={['#f97316', '#9333ea']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+      colors={['#000000', '#000000']}
       style={styles.background}
     >
       <BlurView intensity={70} tint="dark" style={styles.card}>
         <View style={styles.header}>
-          <View style={styles.iconCircle}>
+          <LinearGradient
+            colors={['#3B82F6', '#F97316']}
+            style={styles.iconCircle}
+          >
             <MaterialCommunityIcons name="cellphone" size={36} color="#fff" />
-          </View>
+          </LinearGradient>
           <Text style={styles.subtitle}>
             Tu wallet digital segura y fácil de usar
           </Text>
@@ -114,7 +114,6 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#f97316',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,

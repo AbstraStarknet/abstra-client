@@ -13,7 +13,7 @@ import {
   MessageCircle,
   Settings
 } from 'lucide-react-native';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -34,16 +34,16 @@ const { width } = Dimensions.get('window');
 
 // Configuración de token y endpoints
 const TOKEN_ADDRESS = '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d';
-const DECIMALS      = '18';
-const TO_ADDRESS    = '0x6761e4c92d7e74586563fc763068f5f459d427ddab032c8ffe934cc8ab92a81';
-const TRANSFER_URL  = 'http://192.168.68.88:3000/api/cavos/transfer';
-const BALANCE_URL   = 'http://192.168.68.88:3000/api/cavos/balance';
+const DECIMALS = '18';
+const TO_ADDRESS = '0x6761e4c92d7e74586563fc763068f5f459d427ddab032c8ffe934cc8ab92a81';
+const TRANSFER_URL = 'http://192.168.68.88:3000/api/cavos/transfer';
+const BALANCE_URL = 'http://192.168.68.88:3000/api/cavos/balance';
 
 type Tx = { id: string; incoming: boolean; label: string; date: string; amount: number };
 const SAMPLE_TX: Tx[] = [
-  { id: '1', incoming: true,  label: 'Pago recibido',   date: 'Hoy',         amount: 150   },
-  { id: '2', incoming: false, label: 'Compra en línea', date: 'Ayer',        amount: 45.3  },
-  { id: '3', incoming: true,  label: 'Transferencia',   date: 'Hace 2 días', amount: 200   },
+  { id: '1', incoming: true, label: 'Pago recibido', date: 'Hoy', amount: 150 },
+  { id: '2', incoming: false, label: 'Compra en línea', date: 'Ayer', amount: 45.3 },
+  { id: '3', incoming: true, label: 'Transferencia', date: 'Hace 2 días', amount: 200 },
 ];
 
 export default function HomeScreen() {
@@ -56,8 +56,8 @@ export default function HomeScreen() {
   const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([])
 
   const shortcuts = [
-  { Icon: MessageCircle, label: 'Chat IA', onPress: () => setShowChat(true) },
-  { Icon: CreditCard,    label: 'Tarjetas', onPress: () => {/*...*/} },
+    { Icon: MessageCircle, label: 'Chat IA', onPress: () => setShowChat(true) },
+    { Icon: CreditCard, label: 'Tarjetas', onPress: () => {/*...*/ } },
   ];
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const balanceAnim = useRef(new Animated.Value(0)).current;
@@ -67,12 +67,12 @@ export default function HomeScreen() {
     setLoadingBalance(true);
     try {
       const res = await fetch(BALANCE_URL, {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
+        body: JSON.stringify({
           walletAddress: address,
-          tokenAddress:  TOKEN_ADDRESS,
-          decimals:      DECIMALS,
+          tokenAddress: TOKEN_ADDRESS,
+          decimals: DECIMALS,
         }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -120,17 +120,17 @@ export default function HomeScreen() {
     Alert.alert('Envío', 'Iniciando transferencia…');
     try {
       const payload = {
-        network:      'sepolia',
-        fromAddress:  info.address,
-        toAddress:    TO_ADDRESS,
+        network: 'sepolia',
+        fromAddress: info.address,
+        toAddress: TO_ADDRESS,
         tokenAddress: TOKEN_ADDRESS,
-        amount:       1,
-        decimals:     Number(DECIMALS),
+        amount: 1,
+        decimals: Number(DECIMALS),
       };
       const res = await fetch(TRANSFER_URL, {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(payload),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
       await res.json();
@@ -154,10 +154,10 @@ export default function HomeScreen() {
   const userName = info.name ?? 'Usuario';
 
   return (
-      <LinearGradient
-        colors={['#000000', '#000000']}
-        style={styles.fullscreenGradient}
-      >
+    <LinearGradient
+      colors={['#000000', '#000000']}
+      style={styles.fullscreenGradient}
+    >
       {/* superponemos la StatusBar translucida */}
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
@@ -184,10 +184,7 @@ export default function HomeScreen() {
         >
           {/* BALANCE CARD */}
           <Animated.View style={[styles.balanceWrapper, { transform: [{ scale: scaleAnim }] }]}>
-            <LinearGradient
-              colors={['#9333ea', '#f97316']}
-              style={styles.balanceGradient}
-            >
+            <View style={styles.balanceGradient}>
               <BlurView intensity={90} tint="dark" style={styles.balanceCard}>
                 <View style={styles.balanceTop}>
                   <Text style={styles.balanceTitle}>Saldo USDC</Text>
@@ -199,69 +196,96 @@ export default function HomeScreen() {
                 {loadingBalance
                   ? <ActivityIndicator style={{ marginVertical: 16 }} color="#fff" />
                   : <Text style={styles.balanceValue}>
-                      {hideBalance ? '••••••' : `$${displayedBalance.toFixed(2)}`}
-                    </Text>}
+                    {hideBalance ? '••••••' : `$${displayedBalance.toFixed(2)}`}
+                  </Text>}
 
                 <View style={styles.actions}>
-                  <TouchableOpacity style={[styles.circleButton, styles.sendButton]} onPress={doTransfer}>
-                    <ArrowUpRight color="#fff" size={24} />
-                    <Text style={styles.circleLabel}>Send</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.circleButton}>
-                    <ArrowDownLeft color="#fff" size={24} />
-                    <Text style={styles.circleLabel}>Deposit</Text>
-                  </TouchableOpacity>
+                  <LinearGradient
+                    colors={['#3B82F6', '#F97316']}
+                    style={[styles.circleButton, styles.sendButton]}
+                  >
+                    <TouchableOpacity style={styles.actionButton} onPress={doTransfer}>
+                      <ArrowUpRight color="#fff" size={24} />
+                      <Text style={styles.circleLabel}>Send</Text>
+                    </TouchableOpacity>
+                  </LinearGradient>
+                  <LinearGradient
+                    colors={['#3B82F6', '#F97316']}
+                    style={styles.circleButton}
+                  >
+                    <TouchableOpacity style={styles.actionButton}>
+                      <ArrowDownLeft color="#fff" size={24} />
+                      <Text style={styles.circleLabel}>Deposit</Text>
+                    </TouchableOpacity>
+                  </LinearGradient>
                 </View>
               </BlurView>
-            </LinearGradient>
+            </View>
           </Animated.View>
 
           {/* SHORTCUTS */}
           <View style={styles.shortcuts}>
-            {shortcuts.map(({ Icon, label, onPress }) => (
-              <TouchableOpacity
+            {[
+              { Icon: MessageCircle, label: 'Chat IA' },
+              { Icon: CreditCard, label: 'Tarjetas' },
+            ].map(({ Icon, label }) => (
+              <LinearGradient
                 key={label}
-                style={styles.shortcutCard}
-                onPress={onPress}
-                hitSlop={8}
+                colors={['#3B82F6', '#F97316']}
+                style={styles.shortcutGradient}
               >
-                <Icon color="#fff" size={28} />
-                <Text style={styles.shortcutText}>{label}</Text>
-              </TouchableOpacity>
+                <TouchableOpacity style={styles.shortcutCard}>
+                  <Icon color="#fff" size={28} />
+                  <Text style={styles.shortcutText}>{label}</Text>
+                </TouchableOpacity>
+              </LinearGradient>
             ))}
           </View>
 
-          {/* TRANSACTIONS — ahora igual al BALANCE CARD */}
-          <View style={styles.balanceWrapper}>
-            <LinearGradient colors={['#9333ea', '#f97316']} style={styles.balanceGradient}>
-              <BlurView intensity={90} tint="dark" style={styles.balanceCard}>
-                <Text style={styles.txHeader}>Transacciones Recientes</Text>
-                <FlatList
-                  data={SAMPLE_TX}
-                  keyExtractor={item => item.id}
-                  scrollEnabled={false}
-                  renderItem={({ item }) => (
-                    <View style={styles.txRow}>
-                      <View style={[styles.txIconCircle, item.incoming ? styles.txIn : styles.txOut]}>
-                        {item.incoming
-                          ? <ArrowDownLeft color="#22c55e" size={18}/>
-                          : <ArrowUpRight color="#f87171" size={18}/>}
+          {/* TRANSACTIONS */}
+          <TouchableOpacity
+            onPress={() => router.push('/transactions')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.balanceWrapper}>
+              <View style={styles.balanceGradient}>
+                <BlurView intensity={90} tint="dark" style={styles.balanceCard}>
+                  <View style={styles.txHeaderRow}>
+                    <Text style={styles.txHeader}>Transacciones Recientes</Text>
+                    <Text style={styles.seeAllText}>Ver todas</Text>
+                  </View>
+                  <FlatList
+                    data={SAMPLE_TX.slice(0, 3)}
+                    keyExtractor={item => item.id}
+                    scrollEnabled={false}
+                    renderItem={({ item }) => (
+                      <View style={styles.txRow}>
+                        <View style={[styles.txIconCircle, item.incoming ? styles.txIn : styles.txOut]}>
+                          {item.incoming
+                            ? <ArrowDownLeft color="#22c55e" size={18} />
+                            : <ArrowUpRight color="#f87171" size={18} />}
+                        </View>
+                        <View style={styles.txText}>
+                          <Text style={styles.txLabel}>{item.label}</Text>
+                          <Text style={styles.txDate}>{item.date}</Text>
+                        </View>
+                        <Text style={[styles.txAmount, { color: item.incoming ? '#22c55e' : '#f87171' }]}>
+                          {item.incoming ? '+' : '-'}${item.amount.toFixed(2)}
+                        </Text>
                       </View>
-                      <View style={styles.txText}>
-                        <Text style={styles.txLabel}>{item.label}</Text>
-                        <Text style={styles.txDate}>{item.date}</Text>
-                      </View>
-                      <Text style={[styles.txAmount, { color: item.incoming ? '#22c55e' : '#f87171' }]}>
-                        {item.incoming ? '+' : '-'}${item.amount.toFixed(2)}
-                      </Text>
+                    )}
+                  />
+                  {SAMPLE_TX.length > 3 && (
+                    <View style={styles.moreIndicator}>
+                      <Text style={styles.moreText}>+{SAMPLE_TX.length - 3} más</Text>
                     </View>
                   )}
-                />
-              </BlurView>
-            </LinearGradient>
-          </View>
+                </BlurView>
+              </View>
+            </View>
+          </TouchableOpacity>
         </ScrollView>
-         <ChatModal
+        <ChatModal
           visible={showChat}
           onClose={() => setShowChat(false)}
           messages={chatMsgs}
@@ -269,7 +293,7 @@ export default function HomeScreen() {
             // Agrega tu mensaje
             setChatMsgs(prev => [
               ...prev,
-              { id: Date.now().toString(), fromMe: true,  text },
+              { id: Date.now().toString(), fromMe: true, text },
             ])
             // Simula respuesta
             setTimeout(() => {
@@ -309,77 +333,110 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 16,
   },
-  greeting:     { color: '#fff',       fontSize: 28, fontWeight: '800' },
-  subGreeting:  { color: 'rgba(255,255,255,0.85)', fontSize: 14, marginTop: 4 },
-  headerIcons:  { flexDirection: 'row' },
-  headerIcon:   { marginLeft: 16 },
+  greeting: { color: '#fff', fontSize: 28, fontWeight: '800' },
+  subGreeting: { color: 'rgba(255,255,255,0.85)', fontSize: 14, marginTop: 4 },
+  headerIcons: { flexDirection: 'row' },
+  headerIcon: { marginLeft: 16 },
 
-  container:    { padding: 24, paddingBottom: 40 },
-  balanceWrapper:  { alignItems: 'center', marginBottom: 24 },
-  balanceGradient: { width: width - 48, borderRadius: 24 },
+  container: { padding: 24, paddingBottom: 40 },
+  balanceWrapper: { alignItems: 'center', marginBottom: 24 },
+  balanceGradient: {
+    width: width - 48,
+    borderRadius: 36,
+    backgroundColor: '#1a1a1a',
+    overflow: 'hidden',
+  },
   balanceCard: {
     padding: 24,
-    borderRadius: 20,
-    shadowColor:    '#000',
-    shadowOffset:   { width: 0, height: 12 },
-    shadowOpacity:  0.3,
-    shadowRadius:   20,
-    elevation:      12,
+    borderRadius: 36,
+    backgroundColor: 'transparent',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 12,
+    overflow: 'hidden',
   },
-  balanceTop:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  balanceTitle:  { color: '#fff', fontSize: 18, fontWeight: '600' },
-  balanceValue:  { color: '#fff', fontSize: 38, fontWeight: '900', marginVertical: 16 },
+  balanceTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  balanceTitle: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  balanceValue: { color: '#fff', fontSize: 38, fontWeight: '900', marginVertical: 16 },
 
-  actions:       { flexDirection: 'row', justifyContent: 'space-between' },
-  circleButton:  {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  actions: { flexDirection: 'row', justifyContent: 'space-between' },
+  circleButton: {
     width: '48%',
     alignItems: 'center',
     paddingVertical: 16,
-    borderRadius: 16,
+    borderRadius: 28,
   },
-  sendButton:    { backgroundColor: 'rgba(255,255,255,0.3)' },
-  circleLabel:   { color: '#fff', marginTop: 8, fontSize: 14, fontWeight: '700' },
+  sendButton: {},
+  circleLabel: { color: '#fff', marginTop: 8, fontSize: 14, fontWeight: '700' },
+  actionButton: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
 
-  shortcuts:     { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
-  shortcutCard:  {
+  shortcuts: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
+  shortcutCard: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  shortcutGradient: {
     flex: 1,
     marginHorizontal: 4,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 16,
+    borderRadius: 28,
     paddingVertical: 16,
     alignItems: 'center',
-    shadowColor:   '#000',
-    shadowOffset:  { width: 0, height: 8 },
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
-    shadowRadius:  16,
-    elevation:     10,
+    shadowRadius: 16,
+    elevation: 10,
   },
-  shortcutText:  { color: '#fff', marginTop: 8, fontSize: 13, fontWeight: '700' },
+  shortcutText: { color: '#fff', marginTop: 8, fontSize: 13, fontWeight: '700' },
 
-  txWrapper:     {
-    borderRadius:  20,
-    padding:       16,
+  txWrapper: {
+    borderRadius: 20,
+    padding: 16,
     backgroundColor: 'rgba(255,255,255,0.05)',
-    shadowColor:   '#000',
-    shadowOffset:  { width: 0, height: 8 },
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
-    shadowRadius:  16,
-    elevation:     8,
+    shadowRadius: 16,
+    elevation: 8,
   },
-  txHeader:      { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 12 },
-  txRow:         { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
-  txIconCircle:  {
+  txHeader: { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 12 },
+  txRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  txIconCircle: {
     width: 44, height: 44,
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
-  txIn:  { backgroundColor: 'rgba(34,197,94,0.2)' },
+  txIn: { backgroundColor: 'rgba(34,197,94,0.2)' },
   txOut: { backgroundColor: 'rgba(248,113,113,0.2)' },
-  txText:   { flex: 1 },
-  txLabel:  { color: '#fff', fontSize: 16, fontWeight: '600' },
-  txDate:   { color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 2 },
+  txText: { flex: 1 },
+  txLabel: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  txDate: { color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 2 },
   txAmount: { fontSize: 16, fontWeight: '800' },
+  txHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  seeAllText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  moreIndicator: {
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  moreText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 14,
+  },
 });
