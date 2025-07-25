@@ -1,5 +1,7 @@
 import { ChatModal, ChatMsg } from '@/components/chatModal';
+import { ContactModal } from '@/components/ContactModal';
 import { useCavos } from '@/hooks/useCavos';
+import { useContacts, type WalletContact } from '@/hooks/useContacts';
 import type { CavosWallet } from 'cavos-service-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,11 +9,11 @@ import { useRouter } from 'expo-router';
 import {
   ArrowDownLeft,
   ArrowUpRight,
-  CreditCard,
   EyeOff,
   LogOut,
   MessageCircle,
-  Settings
+  Settings,
+  Users
 } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -49,15 +51,17 @@ const SAMPLE_TX: Tx[] = [
 export default function HomeScreen() {
   const router = useRouter();
   const { wallet, logout } = useCavos();
+  const { findContactByName } = useContacts();
   const [info, setInfo] = useState<ReturnType<CavosWallet['getWalletInfo']> | null>(null);
   const [hideBalance, setHideBalance] = useState(false);
   const [loadingBalance, setLoadingBalance] = useState(true);
-  const [showChat, setShowChat] = useState(false)
-  const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([])
+  const [showChat, setShowChat] = useState(false);
+  const [showContacts, setShowContacts] = useState(false);
+  const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([]);
 
   const shortcuts = [
     { Icon: MessageCircle, label: 'Chat IA', onPress: () => setShowChat(true) },
-    { Icon: CreditCard, label: 'Tarjetas', onPress: () => {/*...*/ } },
+    { Icon: Users, label: 'Contactos', onPress: () => setShowContacts(true) },
   ];
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const balanceAnim = useRef(new Animated.Value(0)).current;
@@ -142,6 +146,81 @@ export default function HomeScreen() {
     }
   };
 
+  // Enhanced transfer function for AI commands
+  const doTransferToContact = async (contact: WalletContact, amount: number) => {
+    if (!info) return;
+
+    Alert.alert('Envío', `Enviando $${amount} USDC a ${contact.name}...`);
+    try {
+      const payload = {
+        network: 'sepolia',
+        fromAddress: info.address,
+        toAddress: contact.walletAddress,
+        tokenAddress: TOKEN_ADDRESS,
+        amount: amount,
+        decimals: Number(DECIMALS),
+      };
+      const res = await fetch(TRANSFER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      await res.json();
+      Alert.alert('Éxito', `Transferencia de $${amount} USDC a ${contact.name} completada`);
+      fetchBalance(info.address);
+    } catch (e: any) {
+      console.error('Error en transferencia:', e.message);
+      Alert.alert('Error', e.message);
+    }
+  };
+
+  // AI Command Processing
+  const processAICommand = (text: string): string => {
+    const lowerText = text.toLowerCase();
+
+    // Pattern: "send X to NAME" or "enviar X a NAME"
+    const sendPattern = /(?:send|enviar)\s+(\d+(?:\.\d+)?)\s+(?:to|a)\s+(.+)/i;
+    const match = text.match(sendPattern);
+
+    if (match) {
+      const amount = parseFloat(match[1]);
+      const contactName = match[2].trim();
+
+      if (isNaN(amount) || amount <= 0) {
+        return "❌ Cantidad inválida. Usa un número positivo.";
+      }
+
+      const contact = findContactByName(contactName);
+      if (!contact) {
+        return `❌ No encontré a "${contactName}" en tus contactos. Agrega este contacto primero.`;
+      }
+
+      // Execute transfer
+      setTimeout(() => doTransferToContact(contact, amount), 500);
+      return `✅ Enviando $${amount} USDC a ${contact.name}...`;
+    }
+
+    // Pattern: "balance" or "saldo"
+    if (lowerText.includes('balance') || lowerText.includes('saldo')) {
+      return `💰 Tu saldo actual es $${displayedBalance.toFixed(2)} USDC`;
+    }
+
+    // Pattern: "contacts" or "contactos"
+    if (lowerText.includes('contacts') || lowerText.includes('contactos')) {
+      setTimeout(() => setShowContacts(true), 500);
+      return "👥 Abriendo tus contactos...";
+    }
+
+    // Default help
+    return `🤖 Comandos disponibles:
+• "send 10 to Pablo" - Enviar dinero
+• "balance" - Ver saldo
+• "contacts" - Abrir contactos
+
+¿En qué puedo ayudarte?`;
+  };
+
   if (!info) {
     return (
       <SafeAreaView style={styles.loader}>
@@ -155,7 +234,7 @@ export default function HomeScreen() {
 
   return (
     <LinearGradient
-      colors={['#000000', '#000000']}
+      colors={['#1A202C', '#2D3748']}
       style={styles.fullscreenGradient}
     >
       {/* superponemos la StatusBar translucida */}
@@ -200,44 +279,18 @@ export default function HomeScreen() {
                   </Text>}
 
                 <View style={styles.actions}>
-                  <LinearGradient
-                    colors={['#3B82F6', '#F97316']}
-                    style={[styles.circleButton, styles.sendButton]}
-                  >
-                    <TouchableOpacity style={styles.actionButton} onPress={doTransfer}>
-                      <ArrowUpRight color="#fff" size={24} />
-                      <Text style={styles.circleLabel}>Send</Text>
-                    </TouchableOpacity>
-                  </LinearGradient>
-                  <LinearGradient
-                    colors={['#3B82F6', '#F97316']}
-                    style={styles.circleButton}
-                  >
-                    <TouchableOpacity style={styles.actionButton}>
-                      <ArrowDownLeft color="#fff" size={24} />
-                      <Text style={styles.circleLabel}>Deposit</Text>
-                    </TouchableOpacity>
-                  </LinearGradient>
+                  <TouchableOpacity style={[styles.actionButton, styles.sendButton]} onPress={doTransfer}>
+                    <ArrowUpRight color="#fff" size={24} />
+                    <Text style={styles.circleLabel}>Send</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.actionButton}>
+                    <ArrowDownLeft color="#fff" size={24} />
+                    <Text style={styles.circleLabel}>Deposit</Text>
+                  </TouchableOpacity>
                 </View>
               </BlurView>
             </View>
           </Animated.View>
-
-          {/* SHORTCUTS */}
-          <View style={styles.shortcuts}>
-            {shortcuts.map(({ Icon, label, onPress }) => (
-              <LinearGradient
-                key={label}
-                colors={['#3B82F6', '#F97316']}
-                style={styles.shortcutGradient}
-              >
-                <TouchableOpacity style={styles.shortcutCard} onPress={onPress}>
-                  <Icon color="#fff" size={28} />
-                  <Text style={styles.shortcutText}>{label}</Text>
-                </TouchableOpacity>
-              </LinearGradient>
-            ))}
-          </View>
 
           {/* TRANSACTIONS */}
           <TouchableOpacity
@@ -282,23 +335,45 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity>
         </ScrollView>
+
+        {/* BOTTOM NAVIGATION */}
+        <View style={styles.bottomNav}>
+          {shortcuts.map(({ Icon, label, onPress }) => (
+            <TouchableOpacity
+              key={label}
+              style={styles.bottomNavButton}
+              onPress={onPress}
+            >
+              <Icon color="#fff" size={24} />
+              <Text style={styles.bottomNavText}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <ContactModal
+          visible={showContacts}
+          onClose={() => setShowContacts(false)}
+        />
+
         <ChatModal
           visible={showChat}
           onClose={() => setShowChat(false)}
           messages={chatMsgs}
           onSend={text => {
-            // Agrega tu mensaje
+            // Add user message
             setChatMsgs(prev => [
               ...prev,
               { id: Date.now().toString(), fromMe: true, text },
-            ])
-            // Simula respuesta
+            ]);
+
+            // Process AI command and respond
             setTimeout(() => {
+              const response = processAICommand(text);
               setChatMsgs(prev => [
                 ...prev,
-                { id: Date.now().toString() + 'b', fromMe: false, text: `🤖 Bot: ${text}` },
-              ])
-            }, 600)
+                { id: Date.now().toString() + 'b', fromMe: false, text: response },
+              ]);
+            }, 600);
           }}
         />
       </SafeAreaView>
@@ -340,7 +415,7 @@ const styles = StyleSheet.create({
   balanceGradient: {
     width: width - 48,
     borderRadius: 36,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#2D3748',
     overflow: 'hidden',
   },
   balanceCard: {
@@ -359,31 +434,24 @@ const styles = StyleSheet.create({
   balanceValue: { color: '#fff', fontSize: 38, fontWeight: '900', marginVertical: 16 },
 
   actions: { flexDirection: 'row', justifyContent: 'space-between' },
-  circleButton: {
+  actionButton: {
     width: '48%',
     alignItems: 'center',
     paddingVertical: 16,
     borderRadius: 28,
+    backgroundColor: '#4A5568',
   },
   sendButton: {},
   circleLabel: { color: '#fff', marginTop: 8, fontSize: 14, fontWeight: '700' },
-  actionButton: {
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
 
   shortcuts: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
   shortcutCard: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: 'transparent',
-  },
-  shortcutGradient: {
-    flex: 1,
+    backgroundColor: '#4A5568',
     marginHorizontal: 4,
     borderRadius: 28,
     paddingVertical: 16,
-    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
@@ -391,6 +459,31 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   shortcutText: { color: '#fff', marginTop: 8, fontSize: 13, fontWeight: '700' },
+
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: '#2D3748',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  bottomNavButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  bottomNavText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+  },
 
   txWrapper: {
     borderRadius: 20,

@@ -57,7 +57,7 @@ export default function TransactionsScreen() {
 
     return (
         <LinearGradient
-            colors={['#000000', '#000000']}
+            colors={['#1A202C', '#2D3748']}
             style={styles.fullscreenGradient}
         >
             <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
         width: width - 48,
         flex: 1,
         borderRadius: 36,
-        backgroundColor: '#1a1a1a',
+        backgroundColor: '#2D3748',
         overflow: 'hidden',
     },
     transactionsCard: {

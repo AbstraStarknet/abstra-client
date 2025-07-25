@@ -34,12 +34,9 @@ export default function LoginScreen() {
     >
       <BlurView intensity={70} tint="dark" style={styles.card}>
         <View style={styles.header}>
-          <LinearGradient
-            colors={['#3B82F6', '#F97316']}
-            style={styles.iconCircle}
-          >
+          <View style={styles.iconCircle}>
             <MaterialCommunityIcons name="cellphone" size={36} color="#fff" />
-          </LinearGradient>
+          </View>
           <Text style={styles.subtitle}>
             Tu wallet digital segura y fácil de usar
           </Text>
@@ -87,7 +84,7 @@ const styles = StyleSheet.create({
   },
   loader: {
     flex: 1,
-    backgroundColor: '#9333ea',
+    backgroundColor: '#1A202C',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -104,7 +101,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 12,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(45, 55, 72, 0.3)',
   },
   header: {
     alignItems: 'center',
@@ -117,6 +114,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    backgroundColor: '#4A5568',
   },
   subtitle: {
     color: '#fff',
