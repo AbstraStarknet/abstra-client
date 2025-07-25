@@ -6,9 +6,9 @@ export type WalletContact = {
   id: string;
   name: string;
   email: string;
-  walletAddress: string;
-  addedBy: string; // current user's email
-  createdAt: string;
+  wallet_address: string; // Server uses snake_case
+  added_by: string;
+  created_at: string;
 };
 
 const CONTACTS_STORAGE_KEY = 'wallet_contacts';
@@ -20,7 +20,7 @@ export function useContacts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Get current user email
+  // Get current user email (addedBy parameter)
   const currentUserEmail = wallet?.getWalletInfo().email;
 
   // Load contacts from local storage and sync with server
@@ -34,22 +34,31 @@ export function useContacts() {
       const localContacts: WalletContact[] = localData ? JSON.parse(localData) : [];
 
       // Filter contacts for current user
-      const userContacts = localContacts.filter(c => c.addedBy === currentUserEmail);
+      const userContacts = localContacts.filter(c => c.added_by === currentUserEmail);
       setContacts(userContacts);
 
       // Sync with server (background)
       try {
-        const response = await fetch(`${CONTACTS_API_URL}?userEmail=${currentUserEmail}`);
-        if (response.ok) {
-          const serverContacts = await response.json();
-          setContacts(serverContacts);
+        const response = await fetch(`${CONTACTS_API_URL}?userEmail=${encodeURIComponent(currentUserEmail)}`);
 
-          // Update local storage with server data
-          const allContacts = [...localContacts.filter(c => c.addedBy !== currentUserEmail), ...serverContacts];
-          await AsyncStorage.setItem(CONTACTS_STORAGE_KEY, JSON.stringify(allContacts));
+        if (response.ok) {
+          const serverResponse = await response.json();
+
+          // Handle server response format: { success: true, data: [...], count: x }
+          if (serverResponse.success && serverResponse.data) {
+            setContacts(serverResponse.data);
+
+            // Update local storage with server data
+            const allContacts = [...localContacts.filter(c => c.added_by !== currentUserEmail), ...serverResponse.data];
+            await AsyncStorage.setItem(CONTACTS_STORAGE_KEY, JSON.stringify(allContacts));
+          } else {
+            console.error('Server returned error:', serverResponse.error);
+          }
+        } else {
+          console.error('Server request failed:', response.status, response.statusText);
         }
       } catch (syncError) {
-        console.log('Sync with server failed, using local data');
+        console.log('Sync with server failed, using local data:', syncError);
       }
 
     } catch (err: any) {
@@ -61,39 +70,70 @@ export function useContacts() {
   }, [currentUserEmail]);
 
   // Add new contact
-  const addContact = useCallback(async (name: string, email: string, walletAddress: string): Promise<boolean> => {
-    if (!currentUserEmail) return false;
+  const addContact = useCallback(async (name: string, email: string, walletAddress: string): Promise<{ success: boolean; error?: string }> => {
+    if (!currentUserEmail) {
+      return { success: false, error: 'User not authenticated' };
+    }
 
-    const newContact: WalletContact = {
-      id: Date.now().toString(),
+    const contactData = {
       name: name.trim(),
       email: email.trim().toLowerCase(),
       walletAddress: walletAddress.trim(),
-      addedBy: currentUserEmail,
-      createdAt: new Date().toISOString(),
+      addedBy: currentUserEmail, // Handle addedBy behind the scenes
     };
 
     try {
-      // Add to local storage first
-      const localData = await AsyncStorage.getItem(CONTACTS_STORAGE_KEY);
-      const localContacts: WalletContact[] = localData ? JSON.parse(localData) : [];
-      localContacts.push(newContact);
-      await AsyncStorage.setItem(CONTACTS_STORAGE_KEY, JSON.stringify(localContacts));
-
-      // Update state
-      setContacts(prev => [...prev, newContact]);
-
-      // Sync to server (background)
-      fetch(CONTACTS_API_URL, {
+      // Send to server first
+      const response = await fetch(CONTACTS_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newContact),
-      }).catch(err => console.log('Server sync failed:', err));
+        body: JSON.stringify(contactData),
+      });
 
-      return true;
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        // Server success - update local storage and state
+        const newContact: WalletContact = result.data;
+
+        const localData = await AsyncStorage.getItem(CONTACTS_STORAGE_KEY);
+        const localContacts: WalletContact[] = localData ? JSON.parse(localData) : [];
+        localContacts.push(newContact);
+        await AsyncStorage.setItem(CONTACTS_STORAGE_KEY, JSON.stringify(localContacts));
+
+        // Update state
+        setContacts(prev => [...prev, newContact]);
+
+        return { success: true };
+      } else {
+        // Server error
+        const errorMessage = result.error || 'Failed to add contact';
+
+        // If it's a network error, save locally for later sync
+        if (!response.ok && response.status >= 500) {
+          const tempContact: WalletContact = {
+            id: `temp_${Date.now()}`,
+            name: contactData.name,
+            email: contactData.email,
+            wallet_address: contactData.walletAddress,
+            added_by: contactData.addedBy,
+            created_at: new Date().toISOString(),
+          };
+
+          const localData = await AsyncStorage.getItem(CONTACTS_STORAGE_KEY);
+          const localContacts: WalletContact[] = localData ? JSON.parse(localData) : [];
+          localContacts.push(tempContact);
+          await AsyncStorage.setItem(CONTACTS_STORAGE_KEY, JSON.stringify(localContacts));
+
+          setContacts(prev => [...prev, tempContact]);
+          return { success: true }; // Show success to user, sync later
+        }
+
+        return { success: false, error: errorMessage };
+      }
     } catch (err: any) {
-      setError(err.message);
-      return false;
+      console.error('Error adding contact:', err);
+      return { success: false, error: 'Network error. Please try again.' };
     }
   }, [currentUserEmail]);
 
@@ -102,21 +142,34 @@ export function useContacts() {
     if (!currentUserEmail) return false;
 
     try {
-      // Remove from local storage
+      // Remove from server first
+      const response = await fetch(`${CONTACTS_API_URL}/${contactId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          // Server success - update local storage and state
+          const localData = await AsyncStorage.getItem(CONTACTS_STORAGE_KEY);
+          const localContacts: WalletContact[] = localData ? JSON.parse(localData) : [];
+          const filteredContacts = localContacts.filter(c => c.id !== contactId);
+          await AsyncStorage.setItem(CONTACTS_STORAGE_KEY, JSON.stringify(filteredContacts));
+
+          setContacts(prev => prev.filter(c => c.id !== contactId));
+          return true;
+        }
+      }
+
+      // If server fails, still remove locally
       const localData = await AsyncStorage.getItem(CONTACTS_STORAGE_KEY);
       const localContacts: WalletContact[] = localData ? JSON.parse(localData) : [];
       const filteredContacts = localContacts.filter(c => c.id !== contactId);
       await AsyncStorage.setItem(CONTACTS_STORAGE_KEY, JSON.stringify(filteredContacts));
 
-      // Update state
       setContacts(prev => prev.filter(c => c.id !== contactId));
-
-      // Sync to server (background)
-      fetch(`${CONTACTS_API_URL}/${contactId}`, {
-        method: 'DELETE',
-      }).catch(err => console.log('Server sync failed:', err));
-
       return true;
+
     } catch (err: any) {
       setError(err.message);
       return false;
@@ -132,6 +185,48 @@ export function useContacts() {
     ) || null;
   }, [contacts]);
 
+  // Transfer to contact using server endpoint
+  const transferToContact = useCallback(async (
+    contactName: string,
+    amount: number,
+    network: string = 'sepolia',
+    tokenAddress: string,
+    decimals: number = 6
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!currentUserEmail || !wallet) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    const walletInfo = wallet.getWalletInfo();
+
+    try {
+      const response = await fetch(`${CONTACTS_API_URL}/transfer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userEmail: currentUserEmail,
+          contactName: contactName.trim(),
+          network,
+          fromAddress: walletInfo.address,
+          tokenAddress,
+          amount,
+          decimals,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        return { success: true };
+      } else {
+        return { success: false, error: result.error || 'Transfer failed' };
+      }
+    } catch (err: any) {
+      console.error('Error transferring to contact:', err);
+      return { success: false, error: 'Network error. Please try again.' };
+    }
+  }, [currentUserEmail, wallet]);
+
   // Load contacts on mount
   useEffect(() => {
     loadContacts();
@@ -144,6 +239,7 @@ export function useContacts() {
     addContact,
     removeContact,
     findContactByName,
+    transferToContact,
     refreshContacts: loadContacts
   };
 }

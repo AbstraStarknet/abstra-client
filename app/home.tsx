@@ -1,5 +1,4 @@
 import { ChatModal, ChatMsg } from '@/components/chatModal';
-import { ContactModal } from '@/components/ContactModal';
 import { useCavos } from '@/hooks/useCavos';
 import { useContacts, type WalletContact } from '@/hooks/useContacts';
 import type { CavosWallet } from 'cavos-service-native';
@@ -12,8 +11,7 @@ import {
   EyeOff,
   LogOut,
   MessageCircle,
-  Settings,
-  Users
+  Settings
 } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -23,6 +21,7 @@ import {
   Dimensions,
   Easing,
   FlatList,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -51,17 +50,16 @@ const SAMPLE_TX: Tx[] = [
 export default function HomeScreen() {
   const router = useRouter();
   const { wallet, logout } = useCavos();
-  const { findContactByName } = useContacts();
+  const { findContactByName, transferToContact } = useContacts();
   const [info, setInfo] = useState<ReturnType<CavosWallet['getWalletInfo']> | null>(null);
   const [hideBalance, setHideBalance] = useState(false);
   const [loadingBalance, setLoadingBalance] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showChat, setShowChat] = useState(false);
-  const [showContacts, setShowContacts] = useState(false);
   const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([]);
 
   const shortcuts = [
     { Icon: MessageCircle, label: 'Chat IA', onPress: () => setShowChat(true) },
-    { Icon: Users, label: 'Contactos', onPress: () => setShowContacts(true) },
   ];
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const balanceAnim = useRef(new Animated.Value(0)).current;
@@ -98,6 +96,22 @@ export default function HomeScreen() {
       setLoadingBalance(false);
     }
   }, [balanceAnim]);
+
+  // Pull-to-refresh handler
+  const onRefresh = useCallback(async () => {
+    if (!info) return;
+
+    setRefreshing(true);
+    try {
+      await fetchBalance(info.address);
+      // Add a small delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } catch (error) {
+      console.error('Refresh error:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [info, fetchBalance]);
 
   useEffect(() => {
     if (!wallet) {
@@ -146,32 +160,25 @@ export default function HomeScreen() {
     }
   };
 
-  // Enhanced transfer function for AI commands
+  // Enhanced transfer function for AI commands using server endpoint
   const doTransferToContact = async (contact: WalletContact, amount: number) => {
     if (!info) return;
 
     Alert.alert('Envío', `Enviando $${amount} USDC a ${contact.name}...`);
-    try {
-      const payload = {
-        network: 'sepolia',
-        fromAddress: info.address,
-        toAddress: contact.walletAddress,
-        tokenAddress: TOKEN_ADDRESS,
-        amount: amount,
-        decimals: Number(DECIMALS),
-      };
-      const res = await fetch(TRANSFER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      await res.json();
+
+    const result = await transferToContact(
+      contact.name,
+      amount,
+      'sepolia',
+      TOKEN_ADDRESS,
+      Number(DECIMALS)
+    );
+
+    if (result.success) {
       Alert.alert('Éxito', `Transferencia de $${amount} USDC a ${contact.name} completada`);
       fetchBalance(info.address);
-    } catch (e: any) {
-      console.error('Error en transferencia:', e.message);
-      Alert.alert('Error', e.message);
+    } else {
+      Alert.alert('Error', result.error || 'Error en la transferencia');
     }
   };
 
@@ -193,7 +200,7 @@ export default function HomeScreen() {
 
       const contact = findContactByName(contactName);
       if (!contact) {
-        return `❌ No encontré a "${contactName}" en tus contactos. Agrega este contacto primero.`;
+        return `❌ No encontré a "${contactName}" en tus contactos. El administrador debe agregar este contacto.`;
       }
 
       // Execute transfer
@@ -206,17 +213,10 @@ export default function HomeScreen() {
       return `💰 Tu saldo actual es $${displayedBalance.toFixed(2)} USDC`;
     }
 
-    // Pattern: "contacts" or "contactos"
-    if (lowerText.includes('contacts') || lowerText.includes('contactos')) {
-      setTimeout(() => setShowContacts(true), 500);
-      return "👥 Abriendo tus contactos...";
-    }
-
     // Default help
     return `🤖 Comandos disponibles:
-• "send 10 to Pablo" - Enviar dinero
+• "send 10 to Pablo" - Enviar dinero a contactos
 • "balance" - Ver saldo
-• "contacts" - Abrir contactos
 
 ¿En qué puedo ayudarte?`;
   };
@@ -260,6 +260,17 @@ export default function HomeScreen() {
         <ScrollView
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#fff"
+              colors={['#fff']}
+              progressBackgroundColor="#2D3748"
+              title="Actualizando saldo..."
+              titleColor="#fff"
+            />
+          }
         >
           {/* BALANCE CARD */}
           <Animated.View style={[styles.balanceWrapper, { transform: [{ scale: scaleAnim }] }]}>
@@ -272,8 +283,13 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 </View>
 
-                {loadingBalance
-                  ? <ActivityIndicator style={{ marginVertical: 16 }} color="#fff" />
+                {loadingBalance || refreshing
+                  ? <View style={styles.balanceLoadingContainer}>
+                    <ActivityIndicator style={{ marginVertical: 16 }} color="#fff" />
+                    <Text style={styles.balanceLoadingText}>
+                      {refreshing ? 'Actualizando...' : 'Cargando...'}
+                    </Text>
+                  </View>
                   : <Text style={styles.balanceValue}>
                     {hideBalance ? '••••••' : `$${displayedBalance.toFixed(2)}`}
                   </Text>}
@@ -349,11 +365,6 @@ export default function HomeScreen() {
             </TouchableOpacity>
           ))}
         </View>
-
-        <ContactModal
-          visible={showContacts}
-          onClose={() => setShowContacts(false)}
-        />
 
         <ChatModal
           visible={showChat}
@@ -432,6 +443,15 @@ const styles = StyleSheet.create({
   balanceTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   balanceTitle: { color: '#fff', fontSize: 18, fontWeight: '600' },
   balanceValue: { color: '#fff', fontSize: 38, fontWeight: '900', marginVertical: 16 },
+  balanceLoadingContainer: {
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  balanceLoadingText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 14,
+    marginTop: 8,
+  },
 
   actions: { flexDirection: 'row', justifyContent: 'space-between' },
   actionButton: {

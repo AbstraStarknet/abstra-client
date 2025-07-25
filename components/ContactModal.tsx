@@ -44,19 +44,30 @@ export function ContactModal({ visible, onClose, onSelectContact }: ContactModal
             return;
         }
 
-        // Basic wallet address validation (Ethereum format)
-        if (!newContact.walletAddress.startsWith('0x') || newContact.walletAddress.length !== 42) {
-            Alert.alert('Error', 'Dirección de wallet inválida');
+        // Basic wallet address validation (Ethereum/Starknet format)
+        if (!newContact.walletAddress.startsWith('0x')) {
+            Alert.alert('Error', 'Dirección de wallet inválida. Debe empezar con 0x');
             return;
         }
 
-        const success = await addContact(newContact.name, newContact.email, newContact.walletAddress);
-        if (success) {
+        const addressWithoutPrefix = newContact.walletAddress.slice(2);
+        if (!/^[0-9a-fA-F]+$/.test(addressWithoutPrefix)) {
+            Alert.alert('Error', 'Dirección de wallet inválida. Solo caracteres hexadecimales');
+            return;
+        }
+
+        if (addressWithoutPrefix.length < 40 || addressWithoutPrefix.length > 65) {
+            Alert.alert('Error', 'Longitud de dirección inválida (40-65 caracteres hex)');
+            return;
+        }
+
+        const result = await addContact(newContact.name, newContact.email, newContact.walletAddress);
+        if (result.success) {
             setNewContact({ name: '', email: '', walletAddress: '' });
             setShowAddForm(false);
             Alert.alert('Éxito', 'Contacto agregado correctamente');
         } else {
-            Alert.alert('Error', 'No se pudo agregar el contacto');
+            Alert.alert('Error', result.error || 'No se pudo agregar el contacto');
         }
     };
 
@@ -89,7 +100,7 @@ export function ContactModal({ visible, onClose, onSelectContact }: ContactModal
                     <Text style={styles.contactName}>{item.name}</Text>
                     <Text style={styles.contactEmail}>{item.email}</Text>
                     <Text style={styles.contactAddress} numberOfLines={1}>
-                        {item.walletAddress}
+                        {item.wallet_address}
                     </Text>
                 </View>
             </TouchableOpacity>
