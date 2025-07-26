@@ -37,8 +37,9 @@ const { width } = Dimensions.get('window');
 const TOKEN_ADDRESS = '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d';
 const DECIMALS = '18';
 const TO_ADDRESS = '0x6761e4c92d7e74586563fc763068f5f459d427ddab032c8ffe934cc8ab92a81';
-const TRANSFER_URL = 'http://192.168.68.88:3000/api/cavos/transfer';
-const BALANCE_URL = 'http://192.168.68.88:3000/api/cavos/balance';
+const TRANSFER_URL = 'http://192.168.68.65:3000/api/contacts/transfer';
+const BALANCE_URL = 'http://192.168.68.65:3000/api/cavos/balance';
+const AGENT_URL = 'http://192.168.68.65:3000/agent/ask';
 
 type Tx = { id: string; incoming: boolean; label: string; date: string; amount: number };
 const SAMPLE_TX: Tx[] = [
@@ -68,6 +69,7 @@ export default function HomeScreen() {
   const fetchBalance = useCallback(async (address: string) => {
     setLoadingBalance(true);
     try {
+      console.log('Fetching balance for address:', address);
       const res = await fetch(BALANCE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -77,11 +79,36 @@ export default function HomeScreen() {
           decimals: DECIMALS,
         }),
       });
-      if (!res.ok) throw new Error(await res.text());
-      const { data } = await res.json();
-      const bal = typeof data.balance === 'object'
-        ? data.balance.balance
-        : Number(data.balance);
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Balance API error:', res.status, errorText);
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
+      }
+
+      const response = await res.json();
+      console.log('Balance response:', response);
+
+      let bal = 0;
+
+      // Handle different response formats
+      if (response.data?.balance !== undefined) {
+        // Format: { data: { balance: number } }
+        bal = typeof response.data.balance === 'object'
+          ? response.data.balance.balance || 0
+          : Number(response.data.balance) || 0;
+      } else if (response.balance !== undefined) {
+        // Format: { balance: number }
+        bal = Number(response.balance) || 0;
+      } else if (response.data?.balance?.balance !== undefined) {
+        // Format: { data: { balance: { balance: number } } }
+        bal = Number(response.data.balance.balance) || 0;
+      } else {
+        console.warn('Unexpected response format:', response);
+        bal = 0;
+      }
+
+      console.log('Parsed balance:', bal);
 
       Animated.timing(balanceAnim, {
         toValue: bal,
@@ -91,7 +118,7 @@ export default function HomeScreen() {
       }).start();
     } catch (e: any) {
       console.error('Error fetching balance:', e.message);
-      Alert.alert('Error', 'No se pudo cargar el balance');
+      Alert.alert('Error', 'No se pudo cargar el balance: ' + e.message);
     } finally {
       setLoadingBalance(false);
     }
@@ -183,42 +210,52 @@ export default function HomeScreen() {
   };
 
   // AI Command Processing
-  const processAICommand = (text: string): string => {
-    const lowerText = text.toLowerCase();
+  // AI Command Processing - Replace the entire function
+  const processAICommand = async (text: string): Promise<string> => {
+    try {
+      // Send message to AI agent
+      const response = await fetch(AGENT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
 
-    // Pattern: "send X to NAME" or "enviar X a NAME"
-    const sendPattern = /(?:send|enviar)\s+(\d+(?:\.\d+)?)\s+(?:to|a)\s+(.+)/i;
-    const match = text.match(sendPattern);
-
-    if (match) {
-      const amount = parseFloat(match[1]);
-      const contactName = match[2].trim();
-
-      if (isNaN(amount) || amount <= 0) {
-        return "❌ Cantidad inválida. Usa un número positivo.";
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Agent API error:', response.status, errorText);
+        return "❌ Error conectando con el agente. Intenta de nuevo.";
       }
 
-      const contact = findContactByName(contactName);
-      if (!contact) {
-        return `❌ No encontré a "${contactName}" en tus contactos. El administrador debe agregar este contacto.`;
+      const result = await response.json();
+
+      // Handle tool results (transfers, contacts, etc.)
+      if (result.toolResult) {
+        console.log('Tool executed:', result.toolCall?.function?.name);
+        console.log('Tool result:', result.toolResult);
+
+        // If it's a transfer, refresh balance
+        if (result.toolCall?.function?.name === 'transferTokens') {
+          setTimeout(() => {
+            if (info) fetchBalance(info.address);
+          }, 2000);
+          return "✅ " + result.toolResult;
+        }
+
+        // For other tools, return the result
+        return "" + result.toolResult;
       }
 
-      // Execute transfer
-      setTimeout(() => doTransferToContact(contact, amount), 500);
-      return `✅ Enviando $${amount} USDC a ${contact.name}...`;
+      // Handle AI message responses
+      if (result.aiMessage?.content) {
+        return result.aiMessage.content;
+      }
+
+      return "🤖 Recibido, pero no hay respuesta del agente.";
+
+    } catch (error) {
+      console.error('Error calling agent:', error);
+      return "❌ Error de conexión. Verifica que el servidor esté funcionando.";
     }
-
-    // Pattern: "balance" or "saldo"
-    if (lowerText.includes('balance') || lowerText.includes('saldo')) {
-      return `💰 Tu saldo actual es $${displayedBalance.toFixed(2)} USDC`;
-    }
-
-    // Default help
-    return `🤖 Comandos disponibles:
-• "send 10 to Pablo" - Enviar dinero a contactos
-• "balance" - Ver saldo
-
-¿En qué puedo ayudarte?`;
   };
 
   if (!info) {
@@ -370,21 +407,38 @@ export default function HomeScreen() {
           visible={showChat}
           onClose={() => setShowChat(false)}
           messages={chatMsgs}
-          onSend={text => {
+          onSend={async (text) => {
             // Add user message
             setChatMsgs(prev => [
               ...prev,
               { id: Date.now().toString(), fromMe: true, text },
             ]);
 
-            // Process AI command and respond
-            setTimeout(() => {
-              const response = processAICommand(text);
-              setChatMsgs(prev => [
-                ...prev,
-                { id: Date.now().toString() + 'b', fromMe: false, text: response },
-              ]);
-            }, 600);
+            // Add loading message
+            const loadingId = Date.now().toString() + '_loading';
+            setChatMsgs(prev => [
+              ...prev,
+              { id: loadingId, fromMe: false, text: '🤔 Pensando...' },
+            ]);
+
+            try {
+              // Process AI command and get response
+              const response = await processAICommand(text);
+
+              // Replace loading message with actual response
+              setChatMsgs(prev => prev.map(msg =>
+                msg.id === loadingId
+                  ? { ...msg, text: response }
+                  : msg
+              ));
+            } catch (error) {
+              // Replace loading message with error
+              setChatMsgs(prev => prev.map(msg =>
+                msg.id === loadingId
+                  ? { ...msg, text: '❌ Error procesando tu mensaje.' }
+                  : msg
+              ));
+            }
           }}
         />
       </SafeAreaView>

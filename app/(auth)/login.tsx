@@ -29,7 +29,7 @@ export default function LoginScreen() {
 
   return (
     <LinearGradient
-      colors={['#000000', '#000000']}
+      colors={['#1A202C', '#2D3748']}
       style={styles.background}
     >
       <BlurView intensity={70} tint="dark" style={styles.card}>
