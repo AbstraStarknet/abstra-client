@@ -1,4 +1,4 @@
-import { ChatModal, ChatMsg } from '@/components/chatModal';
+import { ChatModal, ChatMsg } from '@/components/ChatModal';
 import { useCavos } from '@/hooks/useCavos';
 import { useContacts, type WalletContact } from '@/hooks/useContacts';
 import type { CavosWallet } from 'cavos-service-native';
@@ -37,9 +37,9 @@ const { width } = Dimensions.get('window');
 const TOKEN_ADDRESS = '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d';
 const DECIMALS = '18';
 const TO_ADDRESS = '0x6761e4c92d7e74586563fc763068f5f459d427ddab032c8ffe934cc8ab92a81';
-const TRANSFER_URL = 'http://192.168.68.65:3000/api/contacts/transfer';
-const BALANCE_URL = 'http://192.168.68.65:3000/api/cavos/balance';
-const AGENT_URL = 'http://192.168.68.65:3000/agent/ask';
+const TRANSFER_URL = 'http://192.168.68.99:3000/api/contacts/transfer';
+const BALANCE_URL = 'http://192.168.68.99:3000/api/cavos/balance';
+const AGENT_URL = 'http://192.168.68.99:3000/agent/ask';
 
 type Tx = { id: string; incoming: boolean; label: string; date: string; amount: number };
 const SAMPLE_TX: Tx[] = [
