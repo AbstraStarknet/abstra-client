@@ -1,10 +1,10 @@
 import { useCavos } from '@/hooks/useCavos';
-import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
+import { FontAwesome } from '@expo/vector-icons';
 import { CavosWallet, SignInWithApple, SignInWithGoogle } from 'cavos-service-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -34,11 +34,15 @@ export default function LoginScreen() {
     >
       <BlurView intensity={70} tint="dark" style={styles.card}>
         <View style={styles.header}>
-          <View style={styles.iconCircle}>
-            <MaterialCommunityIcons name="cellphone" size={36} color="#fff" />
+          <View style={styles.iconContainer}>
+            <Image
+              source={require('@/assets/images/AbstraLogo_Navy.png')}
+              style={styles.logoImage}
+              resizeMode="cover"
+            />
           </View>
           <Text style={styles.subtitle}>
-            Tu wallet digital segura y fácil de usar
+            Your secure and easy-to-use digital wallet
           </Text>
         </View>
 
@@ -51,7 +55,7 @@ export default function LoginScreen() {
             onError={handleError}
             style={styles.googleButton}
           >
-            <Text style={styles.googleText}>Continuar con Google</Text>
+            <Text style={styles.googleText}>Continue with Google</Text>
           </SignInWithGoogle>
 
           <SignInWithApple
@@ -63,12 +67,12 @@ export default function LoginScreen() {
             style={styles.appleButton}
           >
             <FontAwesome name="apple" size={20} color="#fff" style={styles.icon} />
-            <Text style={styles.appleText}>Continuar con Apple ID</Text>
+            <Text style={styles.appleText}>Continue with Apple ID</Text>
           </SignInWithApple>
         </View>
 
         <Text style={styles.legalText}>
-          Al continuar, aceptas nuestros términos de servicio y política de privacidad
+          By continuing, you accept our terms of service and privacy policy
         </Text>
       </BlurView>
     </LinearGradient>
@@ -107,14 +111,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  iconCircle: {
+  iconContainer: {
     width: 100,
     height: 100,
-    borderRadius: 50,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    backgroundColor: '#4A5568',
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
+  },
+  logoImage: {
+    width: 100,
+    height: 100,
   },
   subtitle: {
     color: '#fff',

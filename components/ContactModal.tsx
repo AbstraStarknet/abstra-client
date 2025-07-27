@@ -40,24 +40,24 @@ export function ContactModal({ visible, onClose, onSelectContact }: ContactModal
 
     const handleAddContact = async () => {
         if (!newContact.name || !newContact.email || !newContact.walletAddress) {
-            Alert.alert('Error', 'Todos los campos son obligatorios');
+            Alert.alert('Error', 'All fields are required');
             return;
         }
 
         // Basic wallet address validation (Ethereum/Starknet format)
         if (!newContact.walletAddress.startsWith('0x')) {
-            Alert.alert('Error', 'Dirección de wallet inválida. Debe empezar con 0x');
+            Alert.alert('Error', 'Invalid wallet address. Must start with 0x');
             return;
         }
 
         const addressWithoutPrefix = newContact.walletAddress.slice(2);
         if (!/^[0-9a-fA-F]+$/.test(addressWithoutPrefix)) {
-            Alert.alert('Error', 'Dirección de wallet inválida. Solo caracteres hexadecimales');
+            Alert.alert('Error', 'Invalid wallet address. Only hexadecimal characters allowed');
             return;
         }
 
         if (addressWithoutPrefix.length < 40 || addressWithoutPrefix.length > 65) {
-            Alert.alert('Error', 'Longitud de dirección inválida (40-65 caracteres hex)');
+            Alert.alert('Error', 'Invalid address length (40-65 hex characters required)');
             return;
         }
 
@@ -65,9 +65,9 @@ export function ContactModal({ visible, onClose, onSelectContact }: ContactModal
         if (result.success) {
             setNewContact({ name: '', email: '', walletAddress: '' });
             setShowAddForm(false);
-            Alert.alert('Éxito', 'Contacto agregado correctamente');
+            Alert.alert('Success', 'Contact added successfully');
         } else {
-            Alert.alert('Error', result.error || 'No se pudo agregar el contacto');
+            Alert.alert('Error', result.error || 'Could not add contact');
         }
     };
 

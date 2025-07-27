@@ -18,9 +18,9 @@ interface AuthContextProps {
 
 export const AuthContext = createContext<AuthContextProps>({
   wallet: null,
-  setWallet: () => {},
+  setWallet: () => { },
   loading: true,
-  logout: async () => {},
+  logout: async () => { },
 });
 
 type WalletState = {
@@ -47,7 +47,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
         const data = await SecureStore.getItemAsync('cavos_wallet');
         if (data) {
           const json = JSON.parse(data) as WalletState;
-         
+
           const restored = new CavosWallet(
             json.address,
             json.network,
@@ -62,7 +62,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
           setWallet(restored);
         }
       } catch (e) {
-        console.error('Error restaurando CavosWallet:', e);
+        console.error('Error restoring CavosWallet:', e);
       } finally {
         setLoading(false);
       }

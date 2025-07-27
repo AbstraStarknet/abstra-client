@@ -37,7 +37,7 @@ export function ChatModal(props: {
     }).start()
   }, [visible])
 
-  // Scroll al final cuando cambian los mensajes
+  // Scroll to bottom when messages change
   useEffect(() => {
     if (visible && messages.length) {
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100)
@@ -57,13 +57,13 @@ export function ChatModal(props: {
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Chat IA</Text>
+          <Text style={styles.title}>AI Chat</Text>
           <TouchableOpacity onPress={onClose} hitSlop={8}>
             <X color="#fff" size={20} />
           </TouchableOpacity>
         </View>
 
-        {/* Mensajes */}
+        {/* Messages */}
         <FlatList
           ref={listRef}
           data={messages}
@@ -89,7 +89,7 @@ export function ChatModal(props: {
           <View style={styles.inputRow}>
             <TextInput
               style={styles.input}
-              placeholder="Escribe aquí..."
+              placeholder="Type here..."
               placeholderTextColor="rgba(255,255,255,0.6)"
               value={input}
               onChangeText={setInput}
@@ -97,7 +97,7 @@ export function ChatModal(props: {
               onSubmitEditing={handleSend}
             />
             <TouchableOpacity style={styles.sendBtn} onPress={handleSend}>
-              <Text style={styles.sendTxt}>Enviar</Text>
+              <Text style={styles.sendTxt}>Send</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   container: {
-    width: '95%',       
+    width: '95%',
     height: '85%',
     backgroundColor: '#121b2f',
     borderRadius: 20,

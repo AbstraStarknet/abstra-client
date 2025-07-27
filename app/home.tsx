@@ -1,4 +1,4 @@
-import { ChatModal, ChatMsg } from '@/components/ChatModal';
+import { ChatModal, ChatMsg } from '@/components/chatModal';
 import { useCavos } from '@/hooks/useCavos';
 import { useContacts, type WalletContact } from '@/hooks/useContacts';
 import type { CavosWallet } from 'cavos-service-native';
@@ -33,7 +33,7 @@ import {
 
 const { width } = Dimensions.get('window');
 
-// Configuración de token y endpoints
+// Configuración de token y endpoints - UPDATE THESE IPs
 const TOKEN_ADDRESS = '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d';
 const DECIMALS = '18';
 const TO_ADDRESS = '0x6761e4c92d7e74586563fc763068f5f459d427ddab032c8ffe934cc8ab92a81';
@@ -43,9 +43,10 @@ const AGENT_URL = 'http://192.168.68.99:3000/agent/ask';
 
 type Tx = { id: string; incoming: boolean; label: string; date: string; amount: number };
 const SAMPLE_TX: Tx[] = [
-  { id: '1', incoming: true, label: 'Pago recibido', date: 'Hoy', amount: 150 },
-  { id: '2', incoming: false, label: 'Compra en línea', date: 'Ayer', amount: 45.3 },
-  { id: '3', incoming: true, label: 'Transferencia', date: 'Hace 2 días', amount: 200 },
+  { id: '1', incoming: true, label: 'Payment received', date: 'Today', amount: 150 },
+  { id: '2', incoming: false, label: 'Online purchase', date: 'Yesterday', amount: 45.3 },
+  { id: '3', incoming: true, label: 'Transfer', date: '2 days ago', amount: 200 },
+  { id: '4', incoming: false, label: 'Service payment', date: '3 days ago', amount: 89.99 },
 ];
 
 export default function HomeScreen() {
@@ -59,8 +60,11 @@ export default function HomeScreen() {
   const [showChat, setShowChat] = useState(false);
   const [chatMsgs, setChatMsgs] = useState<ChatMsg[]>([]);
 
+  // Add conversation history state for the AI agent
+  const [agentHistory, setAgentHistory] = useState<Array<{ role: string; content: string }>>([]);
+
   const shortcuts = [
-    { Icon: MessageCircle, label: 'Chat IA', onPress: () => setShowChat(true) },
+    { Icon: MessageCircle, label: 'AI Chat', onPress: () => setShowChat(true) },
   ];
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const balanceAnim = useRef(new Animated.Value(0)).current;
@@ -93,15 +97,12 @@ export default function HomeScreen() {
 
       // Handle different response formats
       if (response.data?.balance !== undefined) {
-        // Format: { data: { balance: number } }
         bal = typeof response.data.balance === 'object'
           ? response.data.balance.balance || 0
           : Number(response.data.balance) || 0;
       } else if (response.balance !== undefined) {
-        // Format: { balance: number }
         bal = Number(response.balance) || 0;
       } else if (response.data?.balance?.balance !== undefined) {
-        // Format: { data: { balance: { balance: number } } }
         bal = Number(response.data.balance.balance) || 0;
       } else {
         console.warn('Unexpected response format:', response);
@@ -118,20 +119,17 @@ export default function HomeScreen() {
       }).start();
     } catch (e: any) {
       console.error('Error fetching balance:', e.message);
-      Alert.alert('Error', 'No se pudo cargar el balance: ' + e.message);
+      Alert.alert('Error', 'Could not load balance: ' + e.message);
     } finally {
       setLoadingBalance(false);
     }
   }, [balanceAnim]);
 
-  // Pull-to-refresh handler
   const onRefresh = useCallback(async () => {
     if (!info) return;
-
     setRefreshing(true);
     try {
       await fetchBalance(info.address);
-      // Add a small delay for better UX
       await new Promise(resolve => setTimeout(resolve, 500));
     } catch (error) {
       console.error('Refresh error:', error);
@@ -162,7 +160,7 @@ export default function HomeScreen() {
 
   const doTransfer = async () => {
     if (!info) return;
-    Alert.alert('Envío', 'Iniciando transferencia…');
+    Alert.alert('Transfer', 'Initiating transfer...');
     try {
       const payload = {
         network: 'sepolia',
@@ -179,19 +177,18 @@ export default function HomeScreen() {
       });
       if (!res.ok) throw new Error(await res.text());
       await res.json();
-      Alert.alert('Éxito', 'Transferencia completada');
+      Alert.alert('Success', 'Transfer completed');
       fetchBalance(info.address);
     } catch (e: any) {
-      console.error('Error en transferencia:', e.message);
+      console.error('Error in transfer:', e.message);
       Alert.alert('Error', e.message);
     }
   };
 
-  // Enhanced transfer function for AI commands using server endpoint
   const doTransferToContact = async (contact: WalletContact, amount: number) => {
     if (!info) return;
 
-    Alert.alert('Envío', `Enviando $${amount} USDC a ${contact.name}...`);
+    Alert.alert('Transfer', `Sending $${amount} USDC to ${contact.name}...`);
 
     const result = await transferToContact(
       contact.name,
@@ -202,59 +199,62 @@ export default function HomeScreen() {
     );
 
     if (result.success) {
-      Alert.alert('Éxito', `Transferencia de $${amount} USDC a ${contact.name} completada`);
+      Alert.alert('Success', `Transfer of $${amount} USDC to ${contact.name} completed`);
       fetchBalance(info.address);
     } else {
-      Alert.alert('Error', result.error || 'Error en la transferencia');
+      Alert.alert('Error', result.error || 'Transfer error');
     }
   };
 
-  // AI Command Processing
-  // AI Command Processing - Replace the entire function
+  // Updated AI Command Processing for new agent format
   const processAICommand = async (text: string): Promise<string> => {
     try {
-      // Send message to AI agent
+      console.log('Sending message to agent:', text);
+      console.log('Current history length:', agentHistory.length);
+
       const response = await fetch(AGENT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({
+          message: text,
+          history: agentHistory
+        }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Agent API error:', response.status, errorText);
-        return "❌ Error conectando con el agente. Intenta de nuevo.";
+        return "❌ Error connecting to agent. Try again.";
       }
 
       const result = await response.json();
+      console.log('Agent response:', result);
 
-      // Handle tool results (transfers, contacts, etc.)
-      if (result.toolResult) {
-        console.log('Tool executed:', result.toolCall?.function?.name);
-        console.log('Tool result:', result.toolResult);
-
-        // If it's a transfer, refresh balance
-        if (result.toolCall?.function?.name === 'transferTokens') {
-          setTimeout(() => {
-            if (info) fetchBalance(info.address);
-          }, 2000);
-          return "✅ " + result.toolResult;
-        }
-
-        // For other tools, return the result
-        return "" + result.toolResult;
+      // Update conversation history
+      if (result.history) {
+        setAgentHistory(result.history);
+        console.log('Updated history length:', result.history.length);
       }
 
-      // Handle AI message responses
-      if (result.aiMessage?.content) {
-        return result.aiMessage.content;
+      // Check if tools were executed and refresh balance
+      const toolsExecuted = result.trace?.find((step: any) =>
+        step.type === 'tool_calls' || step.toolName
+      );
+
+      if (toolsExecuted) {
+        console.log('Tools were executed, refreshing balance...');
+        setTimeout(() => {
+          if (info) {
+            fetchBalance(info.address);
+          }
+        }, 2000);
       }
 
-      return "🤖 Recibido, pero no hay respuesta del agente.";
+      return result.finalOutput || "🤖 Message received, but no response from agent.";
 
     } catch (error) {
       console.error('Error calling agent:', error);
-      return "❌ Error de conexión. Verifica que el servidor esté funcionando.";
+      return "❌ Connection error. Check that the server is running.";
     }
   };
 
@@ -267,22 +267,16 @@ export default function HomeScreen() {
     );
   }
 
-  const userName = info.name ?? 'Usuario';
+  const userName = info.name ?? 'User';
 
   return (
-    <LinearGradient
-      colors={['#1A202C', '#2D3748']}
-      style={styles.fullscreenGradient}
-    >
-      {/* superponemos la StatusBar translucida */}
+    <LinearGradient colors={['#1A202C', '#2D3748']} style={styles.fullscreenGradient}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
-
       <SafeAreaView style={styles.safeOverlay}>
-        {/* HEADER */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Hola, {userName.split(' ')[0]}</Text>
-            <Text style={styles.subGreeting}>Bienvenido de vuelta</Text>
+            <Text style={styles.greeting}>Hello, {userName.split(' ')[0]}</Text>
+            <Text style={styles.subGreeting}>Welcome back</Text>
           </View>
           <View style={styles.headerIcons}>
             <TouchableOpacity onPress={handleLogout} style={styles.headerIcon} hitSlop={8}>
@@ -304,17 +298,16 @@ export default function HomeScreen() {
               tintColor="#fff"
               colors={['#fff']}
               progressBackgroundColor="#2D3748"
-              title="Actualizando saldo..."
+              title="Updating balance..."
               titleColor="#fff"
             />
           }
         >
-          {/* BALANCE CARD */}
           <Animated.View style={[styles.balanceWrapper, { transform: [{ scale: scaleAnim }] }]}>
             <View style={styles.balanceGradient}>
               <BlurView intensity={90} tint="dark" style={styles.balanceCard}>
                 <View style={styles.balanceTop}>
-                  <Text style={styles.balanceTitle}>Saldo USDC</Text>
+                  <Text style={styles.balanceTitle}>USDC Balance</Text>
                   <TouchableOpacity onPress={() => setHideBalance(!hideBalance)}>
                     <EyeOff color="rgba(255,255,255,0.7)" size={20} />
                   </TouchableOpacity>
@@ -324,7 +317,7 @@ export default function HomeScreen() {
                   ? <View style={styles.balanceLoadingContainer}>
                     <ActivityIndicator style={{ marginVertical: 16 }} color="#fff" />
                     <Text style={styles.balanceLoadingText}>
-                      {refreshing ? 'Actualizando...' : 'Cargando...'}
+                      {refreshing ? 'Updating...' : 'Loading...'}
                     </Text>
                   </View>
                   : <Text style={styles.balanceValue}>
@@ -345,17 +338,13 @@ export default function HomeScreen() {
             </View>
           </Animated.View>
 
-          {/* TRANSACTIONS */}
-          <TouchableOpacity
-            onPress={() => router.push('/transactions')}
-            activeOpacity={0.8}
-          >
+          <TouchableOpacity onPress={() => router.push('/transactions')} activeOpacity={0.8}>
             <View style={styles.balanceWrapper}>
               <View style={styles.balanceGradient}>
                 <BlurView intensity={90} tint="dark" style={styles.balanceCard}>
                   <View style={styles.txHeaderRow}>
-                    <Text style={styles.txHeader}>Transacciones Recientes</Text>
-                    <Text style={styles.seeAllText}>Ver todas</Text>
+                    <Text style={styles.txHeader}>Recent Transactions</Text>
+                    <Text style={styles.seeAllText}>See all</Text>
                   </View>
                   <FlatList
                     data={SAMPLE_TX.slice(0, 3)}
@@ -380,7 +369,7 @@ export default function HomeScreen() {
                   />
                   {SAMPLE_TX.length > 3 && (
                     <View style={styles.moreIndicator}>
-                      <Text style={styles.moreText}>+{SAMPLE_TX.length - 3} más</Text>
+                      <Text style={styles.moreText}>+{SAMPLE_TX.length - 3} more</Text>
                     </View>
                   )}
                 </BlurView>
@@ -389,14 +378,9 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </ScrollView>
 
-        {/* BOTTOM NAVIGATION */}
         <View style={styles.bottomNav}>
           {shortcuts.map(({ Icon, label, onPress }) => (
-            <TouchableOpacity
-              key={label}
-              style={styles.bottomNavButton}
-              onPress={onPress}
-            >
+            <TouchableOpacity key={label} style={styles.bottomNavButton} onPress={onPress}>
               <Icon color="#fff" size={24} />
               <Text style={styles.bottomNavText}>{label}</Text>
             </TouchableOpacity>
@@ -408,34 +392,28 @@ export default function HomeScreen() {
           onClose={() => setShowChat(false)}
           messages={chatMsgs}
           onSend={async (text) => {
-            // Add user message
             setChatMsgs(prev => [
               ...prev,
               { id: Date.now().toString(), fromMe: true, text },
             ]);
 
-            // Add loading message
             const loadingId = Date.now().toString() + '_loading';
             setChatMsgs(prev => [
               ...prev,
-              { id: loadingId, fromMe: false, text: '🤔 Pensando...' },
+              { id: loadingId, fromMe: false, text: '🤔 Thinking...' },
             ]);
 
             try {
-              // Process AI command and get response
               const response = await processAICommand(text);
-
-              // Replace loading message with actual response
               setChatMsgs(prev => prev.map(msg =>
                 msg.id === loadingId
                   ? { ...msg, text: response }
                   : msg
               ));
             } catch (error) {
-              // Replace loading message with error
               setChatMsgs(prev => prev.map(msg =>
                 msg.id === loadingId
-                  ? { ...msg, text: '❌ Error procesando tu mensaje.' }
+                  ? { ...msg, text: '❌ Error processing your message.' }
                   : msg
               ));
             }

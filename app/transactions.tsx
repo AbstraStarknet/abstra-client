@@ -23,16 +23,16 @@ type Tx = { id: string; incoming: boolean; label: string; date: string; amount: 
 
 // Extended sample data for the full transactions list
 const ALL_TRANSACTIONS: Tx[] = [
-    { id: '1', incoming: true, label: 'Pago recibido', date: 'Hoy', amount: 150 },
-    { id: '2', incoming: false, label: 'Compra en línea', date: 'Ayer', amount: 45.3 },
-    { id: '3', incoming: true, label: 'Transferencia', date: 'Hace 2 días', amount: 200 },
-    { id: '4', incoming: false, label: 'Pago de servicios', date: 'Hace 3 días', amount: 89.99 },
-    { id: '5', incoming: true, label: 'Depósito', date: 'Hace 4 días', amount: 500 },
-    { id: '6', incoming: false, label: 'Compra en tienda', date: 'Hace 5 días', amount: 23.50 },
-    { id: '7', incoming: true, label: 'Transferencia recibida', date: 'Hace 1 semana', amount: 75 },
-    { id: '8', incoming: false, label: 'Suscripción mensual', date: 'Hace 1 semana', amount: 9.99 },
-    { id: '9', incoming: true, label: 'Reembolso', date: 'Hace 1 semana', amount: 12.30 },
-    { id: '10', incoming: false, label: 'Transferencia enviada', date: 'Hace 2 semanas', amount: 100 },
+    { id: '1', incoming: true, label: 'Payment received', date: 'Today', amount: 150 },
+    { id: '2', incoming: false, label: 'Online purchase', date: 'Yesterday', amount: 45.3 },
+    { id: '3', incoming: true, label: 'Transfer', date: '2 days ago', amount: 200 },
+    { id: '4', incoming: false, label: 'Service payment', date: '3 days ago', amount: 89.99 },
+    { id: '5', incoming: true, label: 'Deposit', date: '4 days ago', amount: 500 },
+    { id: '6', incoming: false, label: 'Store purchase', date: '5 days ago', amount: 23.50 },
+    { id: '7', incoming: true, label: 'Transfer received', date: '1 week ago', amount: 75 },
+    { id: '8', incoming: false, label: 'Monthly subscription', date: '1 week ago', amount: 9.99 },
+    { id: '9', incoming: true, label: 'Refund', date: '1 week ago', amount: 12.30 },
+    { id: '10', incoming: false, label: 'Transfer sent', date: '2 weeks ago', amount: 100 },
 ];
 
 export default function TransactionsScreen() {
@@ -68,7 +68,7 @@ export default function TransactionsScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
                         <ArrowLeft color="#fff" size={24} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Transacciones</Text>
+                    <Text style={styles.headerTitle}>Transactions</Text>
                     <View style={{ width: 24 }} />
                 </View>
 
@@ -77,7 +77,7 @@ export default function TransactionsScreen() {
                     <View style={styles.transactionsWrapper}>
                         <View style={styles.transactionsGradient}>
                             <BlurView intensity={90} tint="dark" style={styles.transactionsCard}>
-                                <Text style={styles.sectionTitle}>Todas las Transacciones</Text>
+                                <Text style={styles.sectionTitle}>All Transactions</Text>
                                 <FlatList
                                     data={ALL_TRANSACTIONS}
                                     keyExtractor={item => item.id}
